@@ -10,19 +10,30 @@ export async function loadPrimaryStock(): Promise<PrimaryStock | null> {
     return null;
   }
 
-  const parsed = JSON.parse(rawValue) as Partial<PrimaryStock>;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawValue);
+  } catch {
+    return null;
+  }
+
+  if (parsed === null || typeof parsed !== "object") {
+    return null;
+  }
+
+  const stock = parsed as Partial<PrimaryStock>;
   if (
-    typeof parsed.ticker !== "string" ||
-    typeof parsed.companyName !== "string" ||
-    typeof parsed.exchange !== "string"
+    typeof stock.ticker !== "string" ||
+    typeof stock.companyName !== "string" ||
+    typeof stock.exchange !== "string"
   ) {
     return null;
   }
 
   return {
-    ticker: parsed.ticker,
-    companyName: parsed.companyName,
-    exchange: parsed.exchange,
+    ticker: stock.ticker,
+    companyName: stock.companyName,
+    exchange: stock.exchange,
   };
 }
 
