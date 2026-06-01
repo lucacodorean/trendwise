@@ -1,0 +1,48 @@
+#!/usr/bin/env sh
+set -eu
+
+usage() {
+  printf '%s\n' \
+    'Usage: ./scripts/dev <command>' \
+    '' \
+    'Commands:' \
+    '  up         Build and start the full local stack' \
+    '  test       Run backend tests in Docker' \
+    '  typecheck  Run mobile TypeScript checks in Docker' \
+    '  seed-db    Seed database tables in Docker' \
+    '  update     Rebuild images and refresh npm install inside Docker volumes' \
+    '  config     Render Docker Compose config' \
+    '  help       Show this help text'
+}
+
+case "${1:-help}" in
+  up)
+    docker compose up --build
+    ;;
+  test)
+    docker compose build backend-tests
+    docker compose run --rm backend-tests
+    ;;
+  typecheck)
+    docker compose build mobile-typecheck
+    docker compose run --rm mobile-typecheck
+    ;;
+  seed-db)
+    docker compose build seed-db
+    docker compose run --rm seed-db
+    ;;
+  update)
+    docker compose build --pull
+    docker compose run --rm mobile npm install
+    ;;
+  config)
+    docker compose config
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac

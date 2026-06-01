@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+node_modules/
+.expo/
+.superpowers/
+dist/
+build/

@@ -47,6 +47,38 @@ Trendwise is planned as a monorepo with these main areas:
 
 The backend owns the domain rules and exposes stock-detail payloads optimized for the mobile app. The mobile app consumes generated TypeScript types from the backend OpenAPI schema to reduce contract drift.
 
+## Local Prototype Setup
+
+Copy `.env.example` to `.env` for local overrides. Keep real provider keys and local secrets out of git.
+
+Use Docker Compose for local development. The repo-owned helper script wraps the standard commands.
+
+Start the full local stack:
+
+```bash
+./scripts/dev up
+```
+
+Run backend tests in Docker:
+
+```bash
+./scripts/dev test
+```
+
+Run mobile TypeScript checks in Docker:
+
+```bash
+./scripts/dev typecheck
+```
+
+Refresh Docker images and mobile dependencies after package changes:
+
+```bash
+./scripts/dev update
+```
+
+The Compose stack starts the FastAPI backend, PostgreSQL, Redis, Celery worker, Celery scheduler, OpenTelemetry Collector, Jaeger, and Expo mobile dev server. The backend health endpoint is available at `http://localhost:8000/health`.
+
 ## Prototype Scope
 
 The initial prototype is intentionally constrained:
