@@ -1,0 +1,44 @@
+ticker,company_name,exchange,instrument_type,region,is_supported
+AAPL,Apple Inc.,NASDAQ,common_stock,US,true
+MSFT,Microsoft Corporation,NASDAQ,common_stock,US,true
+NVDA,NVIDIA Corporation,NASDAQ,common_stock,US,true
+AMZN,Amazon.com Inc.,NASDAQ,common_stock,US,true
+META,Meta Platforms Inc.,NASDAQ,common_stock,US,true
+GOOGL,Alphabet Inc. Class A,NASDAQ,common_stock,US,true
+GOOG,Alphabet Inc. Class C,NASDAQ,common_stock,US,true
+TSLA,Tesla Inc.,NASDAQ,common_stock,US,true
+AVGO,Broadcom Inc.,NASDAQ,common_stock,US,true
+COST,Costco Wholesale Corporation,NASDAQ,common_stock,US,true
+NFLX,Netflix Inc.,NASDAQ,common_stock,US,true
+AMD,Advanced Micro Devices Inc.,NASDAQ,common_stock,US,true
+ADBE,Adobe Inc.,NASDAQ,common_stock,US,true
+PEP,PepsiCo Inc.,NASDAQ,common_stock,US,true
+CSCO,Cisco Systems Inc.,NASDAQ,common_stock,US,true
+INTC,Intel Corporation,NASDAQ,common_stock,US,true
+QCOM,Qualcomm Incorporated,NASDAQ,common_stock,US,true
+TXN,Texas Instruments Incorporated,NASDAQ,common_stock,US,true
+AMGN,Amgen Inc.,NASDAQ,common_stock,US,true
+HON,Honeywell International Inc.,NASDAQ,common_stock,US,true
+JPM,JPMorgan Chase & Co.,NYSE,common_stock,US,true
+V,Visa Inc.,NYSE,common_stock,US,true
+UNH,UnitedHealth Group Incorporated,NYSE,common_stock,US,true
+MA,Mastercard Incorporated,NYSE,common_stock,US,true
+LLY,Eli Lilly and Company,NYSE,common_stock,US,true
+WMT,Walmart Inc.,NYSE,common_stock,US,true
+XOM,Exxon Mobil Corporation,NYSE,common_stock,US,true
+JNJ,Johnson & Johnson,NYSE,common_stock,US,true
+PG,Procter & Gamble Company,NYSE,common_stock,US,true
+HD,Home Depot Inc.,NYSE,common_stock,US,true
+MRK,Merck & Co. Inc.,NYSE,common_stock,US,true
+ABBV,AbbVie Inc.,NYSE,common_stock,US,true
+CVX,Chevron Corporation,NYSE,common_stock,US,true
+KO,Coca-Cola Company,NYSE,common_stock,US,true
+BAC,Bank of America Corporation,NYSE,common_stock,US,true
+CRM,Salesforce Inc.,NYSE,common_stock,US,true
+MCD,McDonald's Corporation,NYSE,common_stock,US,true
+ORCL,Oracle Corporation,NYSE,common_stock,US,true
+TMO,Thermo Fisher Scientific Inc.,NYSE,common_stock,US,true
+ABT,Abbott Laboratories,NYSE,common_stock,US,true
+SPY,SPDR S&P 500 ETF Trust,NYSE Arca,etf,US,false
+QQQ,Invesco QQQ Trust,NASDAQ,etf,US,false
+BRK.B,Berkshire Hathaway Inc. Class B,NYSE,common_stock,US,true
