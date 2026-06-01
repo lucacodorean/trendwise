@@ -43,7 +43,7 @@ case "${1:-help}" in
     docker compose run --rm mobile npm install
     ;;
   config)
-    docker compose config
+    docker compose --profile tools config
     ;;
   help|-h|--help)
     usage
