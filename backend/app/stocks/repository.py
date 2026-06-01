@@ -20,23 +20,28 @@ class StockSearchRepository(Protocol):
     def examples(self) -> list[StockRow]: ...
 
 
+def escape_like_pattern(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 @dataclass
 class PostgresStockSearchRepository:
     connection: object
 
     def search(self, query: str) -> list[StockRow]:
         normalized = query.strip().lower()
+        escaped = escape_like_pattern(normalized)
         with self.connection.cursor() as cursor:
             cursor.execute(
                 """
                 SELECT ticker, company_name, exchange
                 FROM supported_stocks
                 WHERE is_supported = TRUE
-                  AND search_text LIKE %(query_pattern)s
+                  AND search_text LIKE %(query_pattern)s ESCAPE '\\'
                 ORDER BY
                   CASE
                     WHEN lower(ticker) = %(query)s THEN 0
-                    WHEN lower(ticker) LIKE %(ticker_prefix)s THEN 1
+                    WHEN lower(ticker) LIKE %(ticker_prefix)s ESCAPE '\\' THEN 1
                     ELSE 2
                   END,
                   ticker ASC
@@ -44,8 +49,8 @@ class PostgresStockSearchRepository:
                 """,
                 {
                     "query": normalized,
-                    "query_pattern": f"%{normalized}%",
-                    "ticker_prefix": f"{normalized}%",
+                    "query_pattern": f"%{escaped}%",
+                    "ticker_prefix": f"{escaped}%",
                 },
             )
             return [
