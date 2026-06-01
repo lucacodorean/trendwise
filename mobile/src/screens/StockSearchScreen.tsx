@@ -105,6 +105,7 @@ export function StockSearchScreen({
             >
               <Text style={styles.exampleTicker}>{stock.ticker}</Text>
               <Text style={styles.exampleCompany}>{stock.companyName}</Text>
+              <Text style={styles.exampleExchange}>{stock.exchange}</Text>
             </Pressable>
           ) : (
             <Pressable
@@ -206,6 +207,12 @@ const styles = StyleSheet.create({
     color: "#334155",
     fontSize: 12,
     marginTop: 2,
+  },
+  exampleExchange: {
+    color: "#2563eb",
+    fontSize: 11,
+    fontWeight: "800",
+    marginTop: 4,
   },
   results: {
     gap: 12,
