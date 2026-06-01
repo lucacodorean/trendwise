@@ -49,3 +49,14 @@ def test_compose_includes_mobile_openapi_generation_service() -> None:
     assert "mobile-openapi:" in compose
     assert "python -m app.openapi" in compose
     assert "npm run generate:api" in compose
+
+
+def test_mobile_openapi_generation_refreshes_volume_dependencies() -> None:
+    compose_path = Path(__file__).resolve().parents[2] / "docker-compose.yml"
+
+    with compose_path.open() as compose_file:
+        compose = yaml.safe_load(compose_file)
+
+    assert compose["services"]["mobile-openapi"]["command"] == (
+        'sh -c "npm install && npm run generate:api"'
+    )

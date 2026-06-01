@@ -109,7 +109,7 @@ services:
       context: ./mobile
     profiles:
       - tools
-    command: npm run generate:api
+    command: sh -c "npm install && npm run generate:api"
     volumes:
       - ./mobile:/app
       - mobile-node-modules:/app/node_modules
