@@ -18,6 +18,8 @@ type AppState =
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>({ status: "loading" });
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -43,13 +45,26 @@ export default function App() {
   }, []);
 
   async function handleSelectStock(stock: PrimaryStock) {
-    await savePrimaryStock(stock);
-    setAppState({ status: "detail", stock });
+    try {
+      await savePrimaryStock(stock);
+      setSelectionError(null);
+      setDetailError(null);
+      setAppState({ status: "detail", stock });
+    } catch {
+      setSelectionError("Could not save your selected Stock. Try again.");
+      setAppState({ status: "search" });
+    }
   }
 
   async function handleChangeStock() {
-    await clearPrimaryStock();
-    setAppState({ status: "search" });
+    try {
+      await clearPrimaryStock();
+      setDetailError(null);
+      setSelectionError(null);
+      setAppState({ status: "search" });
+    } catch {
+      setDetailError("Could not clear your selected Stock. Try again.");
+    }
   }
 
   return (
@@ -60,9 +75,12 @@ export default function App() {
           <ActivityIndicator color="#60a5fa" />
         </SafeAreaView>
       ) : null}
-      {appState.status === "search" ? <StockSearchScreen onSelect={handleSelectStock} /> : null}
+      {appState.status === "search" ? (
+        <StockSearchScreen onSelect={handleSelectStock} selectionError={selectionError} />
+      ) : null}
       {appState.status === "detail" ? (
         <StockDetailPlaceholderScreen
+          detailError={detailError}
           onChangeStock={handleChangeStock}
           stock={appState.stock}
         />

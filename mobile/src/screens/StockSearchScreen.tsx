@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,9 +14,13 @@ import { searchStocks, type PrimaryStock } from "../api/stocks";
 
 type StockSearchScreenProps = {
   onSelect: (stock: PrimaryStock) => void;
+  selectionError: string | null;
 };
 
-export function StockSearchScreen({ onSelect }: StockSearchScreenProps) {
+export function StockSearchScreen({
+  onSelect,
+  selectionError,
+}: StockSearchScreenProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PrimaryStock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,6 +70,7 @@ export function StockSearchScreen({ onSelect }: StockSearchScreenProps) {
       </View>
 
       <TextInput
+        accessibilityLabel="Search ticker or company"
         autoCapitalize="characters"
         onChangeText={setQuery}
         placeholder="Search ticker or company"
@@ -77,28 +83,46 @@ export function StockSearchScreen({ onSelect }: StockSearchScreenProps) {
 
       {isLoading ? <ActivityIndicator color="#60a5fa" style={styles.loader} /> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      {selectionError ? <Text style={styles.error}>{selectionError}</Text> : null}
       {!isLoading && !error && results.length === 0 ? (
         <Text style={styles.empty}>
           No supported US-listed common Stocks matched your search.
         </Text>
       ) : null}
 
-      <View style={styles.results}>
-        {results.map((stock) => (
-          <Pressable
-            accessibilityRole="button"
-            key={stock.ticker}
-            onPress={() => onSelect(stock)}
-            style={styles.resultRow}
-          >
-            <View>
-              <Text style={styles.ticker}>{stock.ticker}</Text>
-              <Text style={styles.company}>{stock.companyName}</Text>
-            </View>
-            <Text style={styles.exchange}>{stock.exchange}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <ScrollView
+        contentContainerStyle={isShowingExamples ? styles.exampleResults : styles.results}
+        keyboardShouldPersistTaps="handled"
+      >
+        {results.map((stock) =>
+          isShowingExamples ? (
+            <Pressable
+              accessibilityLabel={`Select ${stock.ticker}, ${stock.companyName}, ${stock.exchange}`}
+              accessibilityRole="button"
+              key={stock.ticker}
+              onPress={() => onSelect(stock)}
+              style={styles.exampleChip}
+            >
+              <Text style={styles.exampleTicker}>{stock.ticker}</Text>
+              <Text style={styles.exampleCompany}>{stock.companyName}</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityLabel={`Select ${stock.ticker}, ${stock.companyName}, ${stock.exchange}`}
+              accessibilityRole="button"
+              key={stock.ticker}
+              onPress={() => onSelect(stock)}
+              style={styles.resultRow}
+            >
+              <View>
+                <Text style={styles.ticker}>{stock.ticker}</Text>
+                <Text style={styles.company}>{stock.companyName}</Text>
+              </View>
+              <Text style={styles.exchange}>{stock.exchange}</Text>
+            </Pressable>
+          ),
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -160,9 +184,33 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginTop: 18,
   },
+  exampleResults: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 12,
+    paddingBottom: 24,
+  },
+  exampleChip: {
+    backgroundColor: "#dbeafe",
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  exampleTicker: {
+    color: "#1d4ed8",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  exampleCompany: {
+    color: "#334155",
+    fontSize: 12,
+    marginTop: 2,
+  },
   results: {
     gap: 12,
     marginTop: 12,
+    paddingBottom: 24,
   },
   resultRow: {
     alignItems: "center",

@@ -5,11 +5,13 @@ import type { PrimaryStock } from "../api/stocks";
 type StockDetailPlaceholderScreenProps = {
   stock: PrimaryStock;
   onChangeStock: () => void;
+  detailError: string | null;
 };
 
 export function StockDetailPlaceholderScreen({
   stock,
   onChangeStock,
+  detailError,
 }: StockDetailPlaceholderScreenProps) {
   return (
     <SafeAreaView style={styles.screen}>
@@ -26,7 +28,14 @@ export function StockDetailPlaceholderScreen({
           </Text>
         </View>
 
-        <Pressable accessibilityRole="button" onPress={onChangeStock} style={styles.button}>
+        {detailError ? <Text style={styles.error}>{detailError}</Text> : null}
+
+        <Pressable
+          accessibilityLabel="Change selected Stock"
+          accessibilityRole="button"
+          onPress={onChangeStock}
+          style={styles.button}
+        >
           <Text style={styles.buttonText}>Change Stock</Text>
         </Pressable>
       </View>
@@ -85,6 +94,10 @@ const styles = StyleSheet.create({
   noticeBody: {
     color: "#334155",
     lineHeight: 22,
+  },
+  error: {
+    color: "#b91c1c",
+    marginTop: 16,
   },
   button: {
     alignItems: "center",
