@@ -9,6 +9,7 @@ usage() {
     '  up         Build and start the full local stack' \
     '  test       Run backend tests in Docker' \
     '  typecheck  Run mobile TypeScript checks in Docker' \
+    '  generate-openapi  Generate mobile API client/types from backend OpenAPI' \
     '  seed-db    Seed database tables in Docker' \
     '  update     Rebuild images and refresh npm install inside Docker volumes' \
     '  config     Render Docker Compose config' \
@@ -30,6 +31,12 @@ case "${1:-help}" in
   seed-db)
     docker compose build seed-db
     docker compose run --rm seed-db
+    ;;
+  generate-openapi)
+    docker compose build openapi-export
+    docker compose run --rm openapi-export
+    docker compose build mobile-openapi
+    docker compose run --rm mobile-openapi
     ;;
   update)
     docker compose build --pull

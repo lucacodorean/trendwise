@@ -34,6 +34,17 @@ services:
       - postgres
       - redis
 
+  openapi-export:
+    build:
+      context: ./backend
+    profiles:
+      - tools
+    env_file: .env.example
+    working_dir: /workspace/backend
+    command: python -m app.openapi /workspace/mobile/src/api/generated/openapi.json
+    volumes:
+      - .:/workspace
+
   postgres:
     image: postgres:16-alpine
     environment:
@@ -89,6 +100,16 @@ services:
     profiles:
       - tools
     command: npm run typecheck
+    volumes:
+      - ./mobile:/app
+      - mobile-node-modules:/app/node_modules
+
+  mobile-openapi:
+    build:
+      context: ./mobile
+    profiles:
+      - tools
+    command: npm run generate:api
     volumes:
       - ./mobile:/app
       - mobile-node-modules:/app/node_modules
