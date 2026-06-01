@@ -51,6 +51,8 @@ The backend owns the domain rules and exposes stock-detail payloads optimized fo
 
 Copy `.env.example` to `.env` for local overrides. Keep real provider keys and local secrets out of git.
 
+The Expo mobile app reads `EXPO_PUBLIC_API_BASE_URL` for backend requests. For physical devices, set `EXPO_PUBLIC_API_BASE_URL` in `.env` to your dev machine LAN URL, for example `http://192.168.x.x:8000`.
+
 Use Docker Compose for local development. The repo-owned helper script wraps the standard commands.
 
 Start the full local stack:
