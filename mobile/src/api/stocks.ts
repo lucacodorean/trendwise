@@ -14,7 +14,7 @@ declare const process: {
 };
 
 function getExpoDevServerApiBaseUrl(): string | undefined {
-  const scriptURL = NativeModules.SourceCode.scriptURL;
+  const scriptURL = NativeModules.SourceCode?.scriptURL;
   if (typeof scriptURL !== "string") {
     return undefined;
   }

@@ -27,6 +27,6 @@ def test_mobile_api_derives_backend_url_from_expo_dev_server_when_env_is_missing
         Path(__file__).resolve().parents[2] / "mobile" / "src" / "api" / "stocks.ts"
     ).read_text()
 
-    assert "NativeModules.SourceCode.scriptURL" in stocks_api
+    assert "NativeModules.SourceCode?.scriptURL" in stocks_api
     assert "http://${host}:8000" in stocks_api
     assert '?? "http://localhost:8000"' not in stocks_api

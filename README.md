@@ -85,7 +85,7 @@ Refresh Docker images and mobile dependencies after package changes:
 ./scripts/dev update
 ```
 
-The Compose stack starts the FastAPI backend, PostgreSQL, Redis, Celery worker, Celery scheduler, OpenTelemetry Collector, Jaeger, and Expo mobile dev server. The backend health endpoint is available at `http://localhost:8000/health`.
+The Compose stack starts the FastAPI backend, PostgreSQL, Redis, Celery worker, Celery scheduler, OpenTelemetry Collector, and Jaeger. Expo runs locally through `./scripts/dev expo`. The backend health endpoint is available at `http://localhost:8000/health`.
 
 ## Prototype Scope
 

@@ -27,5 +27,13 @@ def test_mobile_api_base_url_is_available_to_compose_services() -> None:
 
     assert "EXPO_PUBLIC_API_BASE_URL=" in env_example
     assert "EXPO_PUBLIC_API_BASE_URL=http://localhost:8000" not in env_example
+    assert "EXPO_PUBLIC_API_BASE_URL=http://192.168." not in env_example
     assert "EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL-}" in compose
     assert compose.count("EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL-}") >= 1
+
+
+def test_readme_documents_expo_running_outside_compose() -> None:
+    readme = (Path(__file__).resolve().parents[2] / "README.md").read_text()
+
+    assert "Expo runs locally" in readme
+    assert "Expo mobile dev server" not in readme
