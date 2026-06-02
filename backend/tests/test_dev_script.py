@@ -57,6 +57,21 @@ def test_dev_script_rejects_loopback_mobile_api_base_urls() -> None:
         assert "EXPO_PUBLIC_API_BASE_URL is required before ./scripts/dev up" in result.stdout
 
 
+def test_dev_script_rejects_mobile_api_base_urls_without_protocol() -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "dev"
+
+    result = subprocess.run(
+        ["/bin/sh", str(script_path), "up"],
+        check=False,
+        env={"EXPO_PUBLIC_API_BASE_URL": "192.168.1.10:8000", "PATH": "/no-such-path"},
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 2
+    assert "EXPO_PUBLIC_API_BASE_URL must include http:// or https://" in result.stdout
+
+
 def test_dev_script_prefers_inline_mobile_api_base_url_over_dotenv(tmp_path: Path) -> None:
     script_path = Path(__file__).resolve().parents[2] / "scripts" / "dev"
     (tmp_path / ".env").write_text("EXPO_PUBLIC_API_BASE_URL=http://192.168.1.10:8000\n")
@@ -89,3 +104,25 @@ def test_dev_script_allows_inline_lan_url_to_override_stale_dotenv(tmp_path: Pat
 
     assert result.returncode == 127
     assert "docker: not found" in result.stderr
+
+
+def test_dev_script_declares_expo_helper_command() -> None:
+    script = (Path(__file__).resolve().parents[2] / "scripts" / "dev").read_text()
+
+    assert "expo" in script
+    assert "Start backend stack and Expo dev server on LAN" in script
+    assert "iphone" not in script
+
+
+def test_dev_script_expo_helper_detects_lan_ip_and_prints_expo_url() -> None:
+    script = (Path(__file__).resolve().parents[2] / "scripts" / "dev").read_text()
+
+    assert "detect_lan_ip" in script
+    assert "ipconfig getifaddr en0" in script
+    assert "ipconfig getifaddr en1" in script
+    assert "EXPO_PUBLIC_API_BASE_URL=http://$LAN_IP:8000 docker compose up --build --detach backend postgres redis worker scheduler otel-collector jaeger" in script
+    assert "EXPO_PUBLIC_API_BASE_URL=http://$LAN_IP:8000 docker compose run --rm seed-db" in script
+    assert "cd mobile" in script
+    assert "EXPO_PUBLIC_API_BASE_URL=http://$LAN_IP:8000 npx expo start --host lan" in script
+    assert "exp://$LAN_IP:8081" in script
+    assert "docker compose down" in script

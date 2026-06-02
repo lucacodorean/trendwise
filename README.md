@@ -51,7 +51,7 @@ The backend owns the domain rules and exposes stock-detail payloads optimized fo
 
 Copy `.env.example` to `.env` for local overrides. Keep real provider keys and local secrets out of git.
 
-The Expo mobile app reads `EXPO_PUBLIC_API_BASE_URL` for backend requests. Set `EXPO_PUBLIC_API_BASE_URL` in `.env` before `./scripts/dev up`; for physical devices, use your dev machine LAN URL, for example `http://192.168.x.x:8000`.
+Expo runs locally on the Mac while backend services run in Docker. The Expo mobile app reads `EXPO_PUBLIC_API_BASE_URL` for backend requests. Set `EXPO_PUBLIC_API_BASE_URL` in `.env` before `./scripts/dev up`; for physical devices, use your dev machine LAN URL, for example `http://192.168.x.x:8000`.
 
 Use Docker Compose for local development. The repo-owned helper script wraps the standard commands.
 
@@ -59,6 +59,12 @@ Start the full local stack:
 
 ```bash
 ./scripts/dev up
+```
+
+Start a LAN Expo session with local Expo and Docker backend services:
+
+```bash
+./scripts/dev expo
 ```
 
 Run backend tests in Docker:
@@ -79,7 +85,7 @@ Refresh Docker images and mobile dependencies after package changes:
 ./scripts/dev update
 ```
 
-The Compose stack starts the FastAPI backend, PostgreSQL, Redis, Celery worker, Celery scheduler, OpenTelemetry Collector, Jaeger, and Expo mobile dev server. The backend health endpoint is available at `http://localhost:8000/health`.
+The Compose stack starts the FastAPI backend, PostgreSQL, Redis, Celery worker, Celery scheduler, OpenTelemetry Collector, and Jaeger. Expo runs locally through `./scripts/dev expo`. The backend health endpoint is available at `http://localhost:8000/health`.
 
 ## Prototype Scope
 

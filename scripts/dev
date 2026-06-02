@@ -7,6 +7,7 @@ usage() {
     '' \
     'Commands:' \
     '  up         Build and start the full local stack' \
+    '  expo       Start backend stack and Expo dev server on LAN' \
     '  test       Run backend tests in Docker' \
     '  typecheck  Run mobile TypeScript checks in Docker' \
     '  generate-openapi  Generate mobile API client/types from backend OpenAPI' \
@@ -14,6 +15,10 @@ usage() {
     '  update     Rebuild images and refresh npm install inside Docker volumes' \
     '  config     Render Docker Compose config' \
     '  help       Show this help text'
+}
+
+detect_lan_ip() {
+  ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true
 }
 
 require_mobile_api_base_url() {
@@ -31,6 +36,15 @@ require_mobile_api_base_url() {
         'EXPO_PUBLIC_API_BASE_URL=http://192.168.x.x:8000'
       exit 2
       ;;
+    http://*|https://*)
+      ;;
+    *)
+      printf '%s\n' \
+        'EXPO_PUBLIC_API_BASE_URL must include http:// or https://.' \
+        'Set it in .env to your dev machine LAN URL, for example:' \
+        'EXPO_PUBLIC_API_BASE_URL=http://192.168.x.x:8000'
+      exit 2
+      ;;
   esac
 }
 
@@ -38,6 +52,22 @@ case "${1:-help}" in
   up)
     require_mobile_api_base_url
     docker compose up --build
+    ;;
+  expo)
+    LAN_IP="$(detect_lan_ip)"
+    if [ -z "$LAN_IP" ]; then
+      printf '%s\n' 'Could not detect a LAN IP from en0 or en1.'
+      exit 2
+    fi
+
+    EXPO_PUBLIC_API_BASE_URL=http://$LAN_IP:8000 docker compose up --build --detach backend postgres redis worker scheduler otel-collector jaeger
+    EXPO_PUBLIC_API_BASE_URL=http://$LAN_IP:8000 docker compose run --rm seed-db
+    printf '%s\n' \
+      "Backend: http://$LAN_IP:8000" \
+      "Expo Go: exp://$LAN_IP:8081" \
+      'Stop: docker compose down'
+    cd mobile
+    EXPO_PUBLIC_API_BASE_URL=http://$LAN_IP:8000 npx expo start --host lan
     ;;
   test)
     docker compose build backend-tests
@@ -59,7 +89,7 @@ case "${1:-help}" in
     ;;
   update)
     docker compose build --pull
-    docker compose run --rm mobile npm install
+    docker compose run --rm mobile-typecheck npm install
     ;;
   config)
     docker compose --profile tools config
