@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -65,10 +65,10 @@ class StockDetailPrediction(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     status: str
-    direction: Optional[str]
+    direction: Optional[Literal["bullish", "bearish", "neutral"]]
     confidence: Optional[float]
     expected_change_percent: Optional[float] = Field(serialization_alias="expectedChangePercent")
-    risk_level: Optional[str] = Field(serialization_alias="riskLevel")
+    risk_level: Optional[Literal["low", "medium", "high"]] = Field(serialization_alias="riskLevel")
     generated_at: Optional[str] = Field(serialization_alias="generatedAt")
     freshness_label: str = Field(serialization_alias="freshnessLabel")
 
