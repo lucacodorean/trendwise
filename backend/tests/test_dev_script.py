@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 
@@ -38,3 +39,19 @@ def test_dev_script_requires_mobile_api_base_url_before_lan_startup() -> None:
     assert "require_mobile_api_base_url" in script
     assert "EXPO_PUBLIC_API_BASE_URL is required before ./scripts/dev up" in script
     assert "http://192.168.x.x:8000" in script
+
+
+def test_dev_script_rejects_loopback_mobile_api_base_urls() -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "dev"
+
+    for base_url in ("http://localhost", "http://127.0.0.1"):
+        result = subprocess.run(
+            ["/bin/sh", str(script_path), "up"],
+            check=False,
+            env={"EXPO_PUBLIC_API_BASE_URL": base_url, "PATH": "/no-such-path"},
+            text=True,
+            capture_output=True,
+        )
+
+        assert result.returncode == 2
+        assert "EXPO_PUBLIC_API_BASE_URL is required before ./scripts/dev up" in result.stdout

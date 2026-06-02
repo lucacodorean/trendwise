@@ -24,7 +24,7 @@ require_mobile_api_base_url() {
   fi
 
   case "${EXPO_PUBLIC_API_BASE_URL:-}" in
-    ""|http://localhost:*|http://127.0.0.1:*)
+    ""|http://localhost|http://localhost:*|http://127.0.0.1|http://127.0.0.1:*)
       printf '%s\n' \
         'EXPO_PUBLIC_API_BASE_URL is required before ./scripts/dev up.' \
         'Set it in .env to your dev machine LAN URL, for example:' \
