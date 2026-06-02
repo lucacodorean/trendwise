@@ -16,8 +16,27 @@ usage() {
     '  help       Show this help text'
 }
 
+require_mobile_api_base_url() {
+  if [ -f .env ]; then
+    set -a
+    . ./.env
+    set +a
+  fi
+
+  case "${EXPO_PUBLIC_API_BASE_URL:-}" in
+    ""|http://localhost:*|http://127.0.0.1:*)
+      printf '%s\n' \
+        'EXPO_PUBLIC_API_BASE_URL is required before ./scripts/dev up.' \
+        'Set it in .env to your dev machine LAN URL, for example:' \
+        'EXPO_PUBLIC_API_BASE_URL=http://192.168.x.x:8000'
+      exit 2
+      ;;
+  esac
+}
+
 case "${1:-help}" in
   up)
+    require_mobile_api_base_url
     docker compose up --build
     ;;
   test)

@@ -24,6 +24,7 @@ def test_mobile_api_base_url_is_available_to_compose_services() -> None:
     env_example = (repo_root / ".env.example").read_text()
     compose = (repo_root / "docker-compose.yml").read_text()
 
-    assert "EXPO_PUBLIC_API_BASE_URL=http://localhost:8000" in env_example
-    assert "EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-http://localhost:8000}" in compose
-    assert compose.count("EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-http://localhost:8000}") >= 2
+    assert "EXPO_PUBLIC_API_BASE_URL=" in env_example
+    assert "EXPO_PUBLIC_API_BASE_URL=http://localhost:8000" not in env_example
+    assert "EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL-}" in compose
+    assert compose.count("EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL-}") >= 2

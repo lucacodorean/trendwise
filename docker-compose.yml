@@ -85,7 +85,7 @@ services:
     command: npm start -- --host lan
     environment:
       EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
-      EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL-}
     ports:
       - "19000:19000"
       - "19001:19001"
@@ -102,7 +102,7 @@ services:
       - tools
     command: npm run typecheck
     environment:
-      EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL-}
     volumes:
       - ./mobile:/app
       - mobile-node-modules:/app/node_modules

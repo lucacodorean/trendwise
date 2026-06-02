@@ -60,3 +60,14 @@ def test_mobile_openapi_generation_refreshes_volume_dependencies() -> None:
     assert compose["services"]["mobile-openapi"]["command"] == (
         'sh -c "npm install && npm run generate:api"'
     )
+
+
+def test_mobile_service_does_not_default_api_base_url_to_localhost() -> None:
+    compose_path = Path(__file__).resolve().parents[2] / "docker-compose.yml"
+
+    with compose_path.open() as compose_file:
+        compose = yaml.safe_load(compose_file)
+
+    assert compose["services"]["mobile"]["environment"]["EXPO_PUBLIC_API_BASE_URL"] == (
+        "${EXPO_PUBLIC_API_BASE_URL-}"
+    )

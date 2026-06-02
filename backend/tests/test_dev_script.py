@@ -30,3 +30,11 @@ def test_dev_script_renders_config_with_tool_services() -> None:
     script = (Path(__file__).resolve().parents[2] / "scripts" / "dev").read_text()
 
     assert "docker compose --profile tools config" in script
+
+
+def test_dev_script_requires_mobile_api_base_url_before_lan_startup() -> None:
+    script = (Path(__file__).resolve().parents[2] / "scripts" / "dev").read_text()
+
+    assert "require_mobile_api_base_url" in script
+    assert "EXPO_PUBLIC_API_BASE_URL is required before ./scripts/dev up" in script
+    assert "http://192.168.x.x:8000" in script
