@@ -21,9 +21,9 @@ def test_docker_compose_declares_required_local_services() -> None:
         "scheduler",
         "otel-collector",
         "jaeger",
-        "mobile",
         "mobile-typecheck",
     }.issubset(services)
+    assert "mobile" not in services
     assert services["backend"]["depends_on"] == ["postgres", "redis"]
     assert services["backend-tests"]["command"] == "python -m pytest -v"
     assert services["backend-tests"]["working_dir"] == "/workspace/backend"
@@ -31,7 +31,6 @@ def test_docker_compose_declares_required_local_services() -> None:
     assert services["backend-tests"]["profiles"] == ["tools"]
     assert services["seed-db"]["profiles"] == ["tools"]
     assert services["seed-db"]["command"] == "python -m app.database.seed"
-    assert services["mobile"]["command"] == "npm start -- --host lan"
     assert services["mobile-typecheck"]["command"] == "npm run typecheck"
     assert services["mobile-typecheck"]["profiles"] == ["tools"]
 
@@ -62,12 +61,12 @@ def test_mobile_openapi_generation_refreshes_volume_dependencies() -> None:
     )
 
 
-def test_mobile_service_does_not_default_api_base_url_to_localhost() -> None:
+def test_mobile_typecheck_does_not_default_api_base_url_to_localhost() -> None:
     compose_path = Path(__file__).resolve().parents[2] / "docker-compose.yml"
 
     with compose_path.open() as compose_file:
         compose = yaml.safe_load(compose_file)
 
-    assert compose["services"]["mobile"]["environment"]["EXPO_PUBLIC_API_BASE_URL"] == (
+    assert compose["services"]["mobile-typecheck"]["environment"]["EXPO_PUBLIC_API_BASE_URL"] == (
         "${EXPO_PUBLIC_API_BASE_URL-}"
     )

@@ -6,9 +6,13 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "platforms": ["ios", "android"],
-    "extra": {
-      "apiBaseUrl": "http://localhost:8000"
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "ios": {
+      "bundleIdentifier": "com.anonymous.trendwise"
     }
   }
 }
