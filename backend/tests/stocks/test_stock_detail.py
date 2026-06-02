@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi.testclient import TestClient
 
@@ -62,7 +63,7 @@ def override_detail_repository(
     yield repository
 
 
-def client(repository: FakeStockDetailRepository | None = None) -> TestClient:
+def client(repository: Optional[FakeStockDetailRepository] = None) -> TestClient:
     detail_repository = repository or FakeStockDetailRepository()
 
     def override() -> Iterator[FakeStockDetailRepository]:
