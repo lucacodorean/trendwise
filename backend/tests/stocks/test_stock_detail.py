@@ -1,11 +1,38 @@
 from collections.abc import Iterator
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Optional
 
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.stocks.repository import get_stock_detail_repository
+from app.stocks.repository import PostgresStockDetailRepository, get_stock_detail_repository
+
+
+class FakeCursor:
+    def __init__(self, rows: list[Optional[tuple[object, ...]]]) -> None:
+        self.rows = rows
+        self.executed: list[tuple[str, dict[str, object]]] = []
+
+    def __enter__(self) -> "FakeCursor":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def execute(self, query: str, params: dict[str, object]) -> None:
+        self.executed.append((query, params))
+
+    def fetchone(self) -> Optional[tuple[object, ...]]:
+        return self.rows.pop(0)
+
+
+class FakeConnection:
+    def __init__(self, rows: list[Optional[tuple[object, ...]]]) -> None:
+        self.cursor_instance = FakeCursor(rows)
+
+    def cursor(self) -> FakeCursor:
+        return self.cursor_instance
 
 
 class FakeStockDetailRepository:
@@ -75,6 +102,70 @@ def client(repository: Optional[FakeStockDetailRepository] = None) -> TestClient
 
 def teardown_function() -> None:
     app.dependency_overrides.clear()
+
+
+def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> None:
+    observed_at = datetime(2026, 6, 2, 13, 30, tzinfo=timezone.utc)
+    forecast_generated_at = datetime(2026, 6, 2, 13, 15, tzinfo=timezone.utc)
+    prediction_generated_at = datetime(2026, 6, 2, 13, 18, tzinfo=timezone.utc)
+    connection = FakeConnection(
+        [
+            ("AAPL", "Apple Inc.", "NASDAQ"),
+            (Decimal("214.35"), Decimal("2.62"), Decimal("1.24"), observed_at),
+            ("unavailable", forecast_generated_at),
+            (
+                "bullish",
+                Decimal("0.68"),
+                Decimal("0.8"),
+                "medium",
+                prediction_generated_at,
+            ),
+        ]
+    )
+
+    detail = PostgresStockDetailRepository(connection).get_detail(" aapl ", "1d")
+
+    assert detail == {
+        "stock": {
+            "ticker": "AAPL",
+            "company_name": "Apple Inc.",
+            "exchange": "NASDAQ",
+        },
+        "market": {
+            "latest_price": 214.35,
+            "daily_change": 2.62,
+            "daily_change_percent": 1.24,
+            "observed_at": observed_at,
+        },
+        "forecast": {
+            "status": "unavailable",
+            "generated_at": forecast_generated_at,
+        },
+        "prediction": {
+            "direction": "bullish",
+            "confidence": 0.68,
+            "expected_change_percent": 0.8,
+            "risk_level": "medium",
+            "generated_at": prediction_generated_at,
+        },
+    }
+    assert [params for _, params in connection.cursor_instance.executed] == [
+        {"ticker": "AAPL"},
+        {"ticker": "AAPL"},
+        {"ticker": "AAPL", "horizon": "1d"},
+        {"ticker": "AAPL", "horizon": "1d"},
+    ]
+
+
+def test_postgres_stock_detail_repository_returns_none_for_unsupported_stock() -> None:
+    connection = FakeConnection([None])
+
+    detail = PostgresStockDetailRepository(connection).get_detail("ZZZZ", "1d")
+
+    assert detail is None
+    assert [params for _, params in connection.cursor_instance.executed] == [
+        {"ticker": "ZZZZ"}
+    ]
 
 
 def test_stock_detail_returns_seeded_supported_stock_for_default_horizon() -> None:

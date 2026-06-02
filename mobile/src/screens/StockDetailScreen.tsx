@@ -37,7 +37,9 @@ export function StockDetailScreen({
 
           <Text style={styles.company}>{stock.companyName}</Text>
           <Text style={styles.price}>{formatPrice(market.latestPrice)}</Text>
-          <Text style={styles.dailyChange}>{formatDailyChange(market.dailyChangePercent)}</Text>
+          <Text style={styles.dailyChange}>
+            {formatDailyChange(market.dailyChange, market.dailyChangePercent)}
+          </Text>
           <Text style={styles.freshness}>{market.freshnessLabel}</Text>
         </View>
 
@@ -83,9 +85,9 @@ function formatPrice(value: number | null): string {
   return typeof value === "number" ? `$${value.toFixed(2)}` : "Unavailable";
 }
 
-function formatDailyChange(value: number | null): string {
-  return typeof value === "number"
-    ? `${formatSignedPercent(value)} today`
+function formatDailyChange(change: number | null, percent: number | null): string {
+  return typeof change === "number" && typeof percent === "number"
+    ? `${formatSignedCurrency(change)} (${formatSignedPercent(percent)}) today`
     : "Change unavailable";
 }
 
@@ -104,6 +106,11 @@ function formatExpectedChange(value: number | null): string {
 function formatSignedPercent(value: number): string {
   const prefix = value >= 0 ? "+" : "";
   return `${prefix}${value.toFixed(2)}%`;
+}
+
+function formatSignedCurrency(value: number): string {
+  const prefix = value >= 0 ? "+" : "-";
+  return `${prefix}$${Math.abs(value).toFixed(2)}`;
 }
 
 function formatTitleCase(value: string | null): string {
