@@ -2,7 +2,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Protocol, TypedDict
+from typing import Optional, Protocol, TypedDict
 
 from app.database.connection import open_database_connection
 
@@ -38,9 +38,9 @@ class StockPredictionDetailRow(TypedDict):
 
 class StockDetailRow(TypedDict):
     stock: StockRow
-    market: StockMarketDetailRow | None
-    forecast: StockForecastDetailRow | None
-    prediction: StockPredictionDetailRow | None
+    market: Optional[StockMarketDetailRow]
+    forecast: Optional[StockForecastDetailRow]
+    prediction: Optional[StockPredictionDetailRow]
 
 
 class StockSearchRepository(Protocol):
@@ -50,7 +50,7 @@ class StockSearchRepository(Protocol):
 
 
 class StockDetailRepository(Protocol):
-    def get_detail(self, ticker: str, horizon: str) -> StockDetailRow | None: ...
+    def get_detail(self, ticker: str, horizon: str) -> Optional[StockDetailRow]: ...
 
 
 def escape_like_pattern(value: str) -> str:
@@ -119,7 +119,7 @@ class PostgresStockSearchRepository:
 class PostgresStockDetailRepository:
     connection: object
 
-    def get_detail(self, ticker: str, horizon: str) -> StockDetailRow | None:
+    def get_detail(self, ticker: str, horizon: str) -> Optional[StockDetailRow]:
         normalized_ticker = ticker.strip().upper()
         with self.connection.cursor() as cursor:
             cursor.execute(

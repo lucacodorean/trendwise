@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -45,10 +46,10 @@ class StockDetailMarket(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     status: str
-    latest_price: float | None = Field(serialization_alias="latestPrice")
-    daily_change: float | None = Field(serialization_alias="dailyChange")
-    daily_change_percent: float | None = Field(serialization_alias="dailyChangePercent")
-    observed_at: str | None = Field(serialization_alias="observedAt")
+    latest_price: Optional[float] = Field(serialization_alias="latestPrice")
+    daily_change: Optional[float] = Field(serialization_alias="dailyChange")
+    daily_change_percent: Optional[float] = Field(serialization_alias="dailyChangePercent")
+    observed_at: Optional[str] = Field(serialization_alias="observedAt")
     freshness_label: str = Field(serialization_alias="freshnessLabel")
 
 
@@ -56,7 +57,7 @@ class StockDetailForecast(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     status: str
-    generated_at: str | None = Field(serialization_alias="generatedAt")
+    generated_at: Optional[str] = Field(serialization_alias="generatedAt")
     freshness_label: str = Field(serialization_alias="freshnessLabel")
 
 
@@ -64,11 +65,11 @@ class StockDetailPrediction(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     status: str
-    direction: str | None
-    confidence: float | None
-    expected_change_percent: float | None = Field(serialization_alias="expectedChangePercent")
-    risk_level: str | None = Field(serialization_alias="riskLevel")
-    generated_at: str | None = Field(serialization_alias="generatedAt")
+    direction: Optional[str]
+    confidence: Optional[float]
+    expected_change_percent: Optional[float] = Field(serialization_alias="expectedChangePercent")
+    risk_level: Optional[str] = Field(serialization_alias="riskLevel")
+    generated_at: Optional[str] = Field(serialization_alias="generatedAt")
     freshness_label: str = Field(serialization_alias="freshnessLabel")
 
 
