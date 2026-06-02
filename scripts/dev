@@ -17,7 +17,7 @@ usage() {
 }
 
 require_mobile_api_base_url() {
-  if [ -f .env ]; then
+  if [ -f .env ] && [ -z "${EXPO_PUBLIC_API_BASE_URL+x}" ]; then
     set -a
     . ./.env
     set +a

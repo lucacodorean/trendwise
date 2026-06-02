@@ -55,3 +55,37 @@ def test_dev_script_rejects_loopback_mobile_api_base_urls() -> None:
 
         assert result.returncode == 2
         assert "EXPO_PUBLIC_API_BASE_URL is required before ./scripts/dev up" in result.stdout
+
+
+def test_dev_script_prefers_inline_mobile_api_base_url_over_dotenv(tmp_path: Path) -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "dev"
+    (tmp_path / ".env").write_text("EXPO_PUBLIC_API_BASE_URL=http://192.168.1.10:8000\n")
+
+    result = subprocess.run(
+        ["/bin/sh", str(script_path), "up"],
+        check=False,
+        cwd=tmp_path,
+        env={"EXPO_PUBLIC_API_BASE_URL": "http://localhost", "PATH": "/no-such-path"},
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 2
+    assert "EXPO_PUBLIC_API_BASE_URL is required before ./scripts/dev up" in result.stdout
+
+
+def test_dev_script_allows_inline_lan_url_to_override_stale_dotenv(tmp_path: Path) -> None:
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "dev"
+    (tmp_path / ".env").write_text("EXPO_PUBLIC_API_BASE_URL=http://localhost\n")
+
+    result = subprocess.run(
+        ["/bin/sh", str(script_path), "up"],
+        check=False,
+        cwd=tmp_path,
+        env={"EXPO_PUBLIC_API_BASE_URL": "http://192.168.1.10:8000", "PATH": "/no-such-path"},
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 127
+    assert "docker: not found" in result.stderr
