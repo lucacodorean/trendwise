@@ -103,7 +103,10 @@ def test_dev_script_allows_inline_lan_url_to_override_stale_dotenv(tmp_path: Pat
     )
 
     assert result.returncode == 127
-    assert "docker: not found" in result.stderr
+    assert (
+        "docker: not found" in result.stderr
+        or "docker: command not found" in result.stderr
+    )
 
 
 def test_dev_script_declares_expo_helper_command() -> None:

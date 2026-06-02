@@ -7,7 +7,13 @@ export { CancelablePromise, CancelError } from './core/CancelablePromise';
 export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
+export type { ForecastHorizon } from './models/ForecastHorizon';
 export type { HTTPValidationError } from './models/HTTPValidationError';
+export type { StockDetailForecast } from './models/StockDetailForecast';
+export type { StockDetailMarket } from './models/StockDetailMarket';
+export type { StockDetailPrediction } from './models/StockDetailPrediction';
+export type { StockDetailResponse } from './models/StockDetailResponse';
+export type { StockDetailStock } from './models/StockDetailStock';
 export type { StockSearchResponse } from './models/StockSearchResponse';
 export type { StockSearchResult } from './models/StockSearchResult';
 export type { ValidationError } from './models/ValidationError';

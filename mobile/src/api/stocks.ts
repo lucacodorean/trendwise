@@ -1,6 +1,8 @@
 import {
   OpenAPI,
   StocksService,
+  type ForecastHorizon,
+  type StockDetailResponse,
   type StockSearchResult,
 } from "./generated";
 import { NativeModules } from "react-native";
@@ -31,8 +33,17 @@ const API_BASE_URL =
 OpenAPI.BASE = API_BASE_URL;
 
 export type PrimaryStock = StockSearchResult;
+export type StockDetail = StockDetailResponse;
+export type { ForecastHorizon };
 
 export async function searchStocks(query: string): Promise<StockSearchResult[]> {
   const response = await StocksService.searchStocks({ q: query });
   return normalizeStockSearchResults(response);
+}
+
+export async function getStockDetail(
+  ticker: string,
+  horizon: ForecastHorizon = "1d",
+): Promise<StockDetail> {
+  return StocksService.getStockDetail({ ticker, horizon });
 }

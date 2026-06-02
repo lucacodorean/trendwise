@@ -9,7 +9,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "generate:api": "openapi --input ./src/api/generated/openapi.json --output ./src/api/generated --client fetch --useOptions"
+    "generate:api": "openapi --input ./src/api/generated/openapi.json --output ./src/api/generated --client fetch --useOptions --useUnionTypes"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",

@@ -2,6 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { ForecastHorizon } from '../models/ForecastHorizon';
+import type { StockDetailResponse } from '../models/StockDetailResponse';
 import type { StockSearchResponse } from '../models/StockSearchResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
@@ -22,6 +24,32 @@ export class StocksService {
             url: '/stocks/search',
             query: {
                 'q': q,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Stock Detail
+     * @returns StockDetailResponse Successful Response
+     * @throws ApiError
+     */
+    public static getStockDetail({
+        ticker,
+        horizon = '1d',
+    }: {
+        ticker: string,
+        horizon?: ForecastHorizon,
+    }): CancelablePromise<StockDetailResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/stocks/{ticker}/detail',
+            path: {
+                'ticker': ticker,
+            },
+            query: {
+                'horizon': horizon,
             },
             errors: {
                 422: `Validation Error`,
