@@ -1,51 +1,99 @@
+import { useEffect, useState } from "react";
+import { ActivityIndicator, SafeAreaView, StyleSheet } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaView, StyleSheet, Text, View } from "react-native";
+
+import type { PrimaryStock } from "./src/api/stocks";
+import { StockDetailPlaceholderScreen } from "./src/screens/StockDetailPlaceholderScreen";
+import { StockSearchScreen } from "./src/screens/StockSearchScreen";
+import {
+  clearPrimaryStock,
+  loadPrimaryStock,
+  savePrimaryStock,
+} from "./src/storage/primaryStock";
+
+type AppState =
+  | { status: "loading" }
+  | { status: "search" }
+  | { status: "detail"; stock: PrimaryStock };
 
 export default function App() {
+  const [appState, setAppState] = useState<AppState>({ status: "loading" });
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function hydratePrimaryStock() {
+      try {
+        const cachedStock = await loadPrimaryStock();
+        if (isActive) {
+          setAppState(cachedStock ? { status: "detail", stock: cachedStock } : { status: "search" });
+        }
+      } catch {
+        if (isActive) {
+          setAppState({ status: "search" });
+        }
+      }
+    }
+
+    hydratePrimaryStock();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  async function handleSelectStock(stock: PrimaryStock) {
+    try {
+      await savePrimaryStock(stock);
+      setSelectionError(null);
+      setDetailError(null);
+      setAppState({ status: "detail", stock });
+    } catch {
+      setSelectionError("Could not save your selected Stock. Try again.");
+      setAppState({ status: "search" });
+    }
+  }
+
+  async function handleChangeStock() {
+    try {
+      await clearPrimaryStock();
+      setDetailError(null);
+      setSelectionError(null);
+      setAppState({ status: "search" });
+    } catch {
+      setDetailError("Could not clear your selected Stock. Try again.");
+    }
+  }
+
   return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="auto" />
-      <View style={styles.card}>
-        <Text style={styles.kicker}>Trendwise</Text>
-        <Text style={styles.title}>Stock Forecasting Prototype</Text>
-        <Text style={styles.body}>
-          Select a supported stock to view forecasts, predictions, summaries,
-          and market context. Forecasts are informational estimates only.
-        </Text>
-      </View>
-    </SafeAreaView>
+    <>
+      <StatusBar style="light" />
+      {appState.status === "loading" ? (
+        <SafeAreaView style={styles.loadingScreen}>
+          <ActivityIndicator color="#60a5fa" />
+        </SafeAreaView>
+      ) : null}
+      {appState.status === "search" ? (
+        <StockSearchScreen onSelect={handleSelectStock} selectionError={selectionError} />
+      ) : null}
+      {appState.status === "detail" ? (
+        <StockDetailPlaceholderScreen
+          detailError={detailError}
+          onChangeStock={handleChangeStock}
+          stock={appState.stock}
+        />
+      ) : null}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
+  loadingScreen: {
+    alignItems: "center",
     backgroundColor: "#0f172a",
+    flex: 1,
     justifyContent: "center",
-    padding: 24,
-  },
-  card: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 24,
-    padding: 24,
-  },
-  kicker: {
-    color: "#2563eb",
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-    marginBottom: 12,
-    textTransform: "uppercase",
-  },
-  title: {
-    color: "#0f172a",
-    fontSize: 28,
-    fontWeight: "800",
-    marginBottom: 12,
-  },
-  body: {
-    color: "#334155",
-    fontSize: 16,
-    lineHeight: 24,
   },
 });
