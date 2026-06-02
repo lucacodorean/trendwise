@@ -22,7 +22,9 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>({ status: "loading" });
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const selectionRequestId = useRef(0);
   const detailRequestId = useRef(0);
+  const savePrimaryStockQueue = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     let isActive = true;
@@ -72,12 +74,27 @@ export default function App() {
   }
 
   async function handleSelectStock(stock: PrimaryStock) {
+    const requestId = selectionRequestId.current + 1;
+    selectionRequestId.current = requestId;
+    detailRequestId.current += 1;
+
     try {
-      await savePrimaryStock(stock);
+      const savePromise = savePrimaryStockQueue.current.then(() => savePrimaryStock(stock));
+      savePrimaryStockQueue.current = savePromise.catch(() => undefined);
+      await savePromise;
+
+      if (selectionRequestId.current !== requestId) {
+        return;
+      }
+
       setSelectionError(null);
       setDetailError(null);
       loadDetailForStock(stock);
     } catch {
+      if (selectionRequestId.current !== requestId) {
+        return;
+      }
+
       setSelectionError("Could not save your selected Stock. Try again.");
       setAppState({ status: "search" });
     }
@@ -85,6 +102,7 @@ export default function App() {
 
   async function handleChangeStock() {
     try {
+      selectionRequestId.current += 1;
       detailRequestId.current += 1;
       await clearPrimaryStock();
       setDetailError(null);
@@ -116,6 +134,14 @@ export default function App() {
         <SafeAreaView style={styles.errorScreen}>
           <Text style={styles.errorTitle}>{appState.stock.ticker} details unavailable</Text>
           <Text style={styles.errorText}>{detailError}</Text>
+          <Pressable
+            accessibilityLabel={`Retry loading ${appState.stock.ticker} details`}
+            accessibilityRole="button"
+            onPress={() => loadDetailForStock(appState.stock)}
+            style={styles.retryButton}
+          >
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </Pressable>
           <Pressable
             accessibilityLabel="Change selected Stock"
             accessibilityRole="button"
@@ -164,11 +190,23 @@ const styles = StyleSheet.create({
     color: "#fecaca",
     lineHeight: 22,
   },
+  retryButton: {
+    alignItems: "center",
+    backgroundColor: "#dbeafe",
+    borderRadius: 16,
+    marginTop: 24,
+    padding: 16,
+  },
+  retryButtonText: {
+    color: "#1d4ed8",
+    fontSize: 16,
+    fontWeight: "800",
+  },
   changeButton: {
     alignItems: "center",
     backgroundColor: "#2563eb",
     borderRadius: 16,
-    marginTop: 24,
+    marginTop: 12,
     padding: 16,
   },
   changeButtonText: {
