@@ -35,9 +35,13 @@ def test_run_seeders_runs_each_seeder_in_order_with_same_connection() -> None:
 class RecordingCursor:
     def __init__(self) -> None:
         self.executions: list[tuple[str, object]] = []
+        self.fetchone_results: list[tuple[int, ...] | None] = [(42,), (100,), (200,)]
 
     def execute(self, sql: str, params: object = None) -> None:
         self.executions.append((sql, params))
+
+    def fetchone(self) -> tuple[int, ...] | None:
+        return self.fetchone_results.pop(0)
 
     def __enter__(self) -> "RecordingCursor":
         return self
@@ -58,7 +62,9 @@ class RecordingConnection:
         self.commits += 1
 
 
-def test_supported_stocks_seeder_creates_table_and_upserts_seed_rows(tmp_path: Path) -> None:
+def test_supported_stocks_seeder_upserts_seed_rows_into_migrated_stocks_table(
+    tmp_path: Path,
+) -> None:
     seed_file = tmp_path / "supported_stocks.csv"
     seed_file.write_text(
         "ticker,company_name,exchange,instrument_type,region,is_supported\n"
@@ -70,8 +76,9 @@ def test_supported_stocks_seeder_creates_table_and_upserts_seed_rows(tmp_path: P
     SupportedStocksSeeder(seed_file=seed_file).run(connection)
 
     executions = connection.cursor_instance.executions
-    assert "CREATE TABLE IF NOT EXISTS supported_stocks" in executions[0][0]
-    upsert_params = [params for sql, params in executions if "INSERT INTO supported_stocks" in sql]
+    assert all("CREATE TABLE" not in sql for sql, _ in executions)
+    assert any("INSERT INTO stocks" in sql for sql, _ in executions)
+    upsert_params = [params for sql, params in executions if "INSERT INTO stocks" in sql]
     assert upsert_params == [
         {
             "ticker": "AAPL",
@@ -86,7 +93,9 @@ def test_supported_stocks_seeder_creates_table_and_upserts_seed_rows(tmp_path: P
     assert connection.commits == 1
 
 
-def test_stock_detail_seeder_creates_tables_and_upserts_seed_rows(tmp_path: Path) -> None:
+def test_stock_detail_seeder_inserts_seed_rows_into_migrated_tables(
+    tmp_path: Path,
+) -> None:
     seed_file = tmp_path / "stock_detail.csv"
     seed_file.write_text(
         "ticker,horizon,latest_price,daily_change,daily_change_percent,observed_at,"
@@ -102,16 +111,25 @@ def test_stock_detail_seeder_creates_tables_and_upserts_seed_rows(tmp_path: Path
     StockDetailSeeder(seed_file=seed_file).run(connection)
 
     executions = connection.cursor_instance.executions
-    assert "CREATE TABLE IF NOT EXISTS stock_market_details" in executions[0][0]
-    assert "CREATE TABLE IF NOT EXISTS stock_forecast_details" in executions[1][0]
-    assert "CREATE TABLE IF NOT EXISTS stock_prediction_details" in executions[2][0]
+    assert all("CREATE TABLE" not in sql for sql, _ in executions)
+    assert any("INSERT INTO market_snapshots" in sql for sql, _ in executions)
+    assert any("INSERT INTO forecast_runs" in sql for sql, _ in executions)
+    assert any("INSERT INTO prediction_runs" in sql for sql, _ in executions)
 
-    market_upsert_params = [
-        params for sql, params in executions if "INSERT INTO stock_market_details" in sql
+    market_insert_params = [
+        params for sql, params in executions if "INSERT INTO market_snapshots" in sql
     ]
-    assert market_upsert_params == [
+    market_insert_sql = [
+        sql for sql, _ in executions if "INSERT INTO market_snapshots" in sql
+    ][0]
+    assert "ON CONFLICT (stock_id, provider, observed_at) DO UPDATE SET" in market_insert_sql
+    assert "latest_price = EXCLUDED.latest_price" in market_insert_sql
+    assert "daily_change = EXCLUDED.daily_change" in market_insert_sql
+    assert "daily_change_percent = EXCLUDED.daily_change_percent" in market_insert_sql
+    assert market_insert_params == [
         {
-            "ticker": "AAPL",
+            "stock_id": 42,
+            "provider": "seed",
             "latest_price": 214.35,
             "daily_change": 2.62,
             "daily_change_percent": 1.24,
@@ -119,25 +137,56 @@ def test_stock_detail_seeder_creates_tables_and_upserts_seed_rows(tmp_path: Path
         }
     ]
 
-    forecast_upsert_params = [
-        params for sql, params in executions if "INSERT INTO stock_forecast_details" in sql
+    forecast_insert_params = [
+        params for sql, params in executions if "INSERT INTO forecast_runs" in sql
     ]
-    assert forecast_upsert_params == [
+    forecast_insert_sql = [sql for sql, _ in executions if "INSERT INTO forecast_runs" in sql][0]
+    assert "ON CONFLICT (stock_id, horizon, generated_at) DO UPDATE SET" in forecast_insert_sql
+    assert "status = EXCLUDED.status" in forecast_insert_sql
+    assert forecast_insert_params == [
         {
-            "ticker": "AAPL",
+            "stock_id": 42,
             "horizon": "1d",
             "status": "unavailable",
             "generated_at": "2026-06-02T13:15:00Z",
         }
     ]
 
-    prediction_upsert_params = [
-        params for sql, params in executions if "INSERT INTO stock_prediction_details" in sql
+    forecast_source_insert_params = [
+        params
+        for sql, params in executions
+        if "INSERT INTO forecast_source_market_snapshots" in sql
     ]
-    assert prediction_upsert_params == [
+    forecast_source_insert_sql = [
+        sql
+        for sql, _ in executions
+        if "INSERT INTO forecast_source_market_snapshots" in sql
+    ][0]
+    assert "ON CONFLICT (forecast_run_id, market_snapshot_id) DO NOTHING" in forecast_source_insert_sql
+    assert forecast_source_insert_params == [
         {
-            "ticker": "AAPL",
+            "forecast_run_id": 200,
+            "market_snapshot_id": 100,
+        }
+    ]
+
+    prediction_insert_params = [
+        params for sql, params in executions if "INSERT INTO prediction_runs" in sql
+    ]
+    prediction_insert_sql = [sql for sql, _ in executions if "INSERT INTO prediction_runs" in sql][0]
+    assert (
+        "ON CONFLICT (stock_id, horizon, forecast_run_id, generated_at) DO UPDATE SET"
+        in prediction_insert_sql
+    )
+    assert "direction = EXCLUDED.direction" in prediction_insert_sql
+    assert "confidence = EXCLUDED.confidence" in prediction_insert_sql
+    assert "expected_change_percent = EXCLUDED.expected_change_percent" in prediction_insert_sql
+    assert "risk_level = EXCLUDED.risk_level" in prediction_insert_sql
+    assert prediction_insert_params == [
+        {
+            "stock_id": 42,
             "horizon": "1d",
+            "forecast_run_id": 200,
             "direction": "bullish",
             "confidence": 0.68,
             "expected_change_percent": 0.8,

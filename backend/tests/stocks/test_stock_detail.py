@@ -110,9 +110,9 @@ def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> 
     prediction_generated_at = datetime(2026, 6, 2, 13, 18, tzinfo=timezone.utc)
     connection = FakeConnection(
         [
-            ("AAPL", "Apple Inc.", "NASDAQ"),
+            (1, "AAPL", "Apple Inc.", "NASDAQ"),
             (Decimal("214.35"), Decimal("2.62"), Decimal("1.24"), observed_at),
-            ("unavailable", forecast_generated_at),
+            (10, "unavailable", forecast_generated_at),
             (
                 "bullish",
                 Decimal("0.68"),
@@ -151,10 +151,46 @@ def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> 
     }
     assert [params for _, params in connection.cursor_instance.executed] == [
         {"ticker": "AAPL"},
-        {"ticker": "AAPL"},
-        {"ticker": "AAPL", "horizon": "1d"},
-        {"ticker": "AAPL", "horizon": "1d"},
+        {"stock_id": 1},
+        {"stock_id": 1, "horizon": "1d"},
+        {"forecast_run_id": 10},
     ]
+    sql = "\n".join(query for query, _ in connection.cursor_instance.executed)
+    assert "FROM stocks" in sql
+    assert "FROM market_snapshots" in sql
+    assert "FROM forecast_runs" in sql
+    assert "FROM prediction_runs" in sql
+    prediction_query = connection.cursor_instance.executed[3][0]
+    assert "forecast_run_id = %(forecast_run_id)s" in prediction_query
+    assert "stock_market_details" not in sql
+    assert "stock_forecast_details" not in sql
+    assert "stock_prediction_details" not in sql
+
+
+def test_postgres_stock_detail_repository_preserves_nullable_market_change_fields() -> None:
+    observed_at = datetime(2026, 6, 2, 13, 30, tzinfo=timezone.utc)
+    connection = FakeConnection(
+        [
+            (1, "AAPL", "Apple Inc.", "NASDAQ"),
+            (Decimal("214.35"), None, None, observed_at),
+            None,
+            None,
+        ]
+    )
+
+    detail = PostgresStockDetailRepository(connection).get_detail("AAPL", "1d")
+
+    assert detail is not None
+    assert detail["market"] == {
+        "latest_price": 214.35,
+        "daily_change": None,
+        "daily_change_percent": None,
+        "observed_at": observed_at,
+    }
+    prediction_query, prediction_params = connection.cursor_instance.executed[3]
+    assert "stock_id = %(stock_id)s" in prediction_query
+    assert "horizon = %(horizon)s" in prediction_query
+    assert prediction_params == {"stock_id": 1, "horizon": "1d"}
 
 
 def test_postgres_stock_detail_repository_returns_none_for_unsupported_stock() -> None:

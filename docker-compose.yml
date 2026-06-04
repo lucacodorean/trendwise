@@ -34,6 +34,19 @@ services:
       - postgres
       - redis
 
+  migrate-db:
+    build:
+      context: ./backend
+    profiles:
+      - tools
+    env_file: .env.example
+    working_dir: /workspace/backend
+    command: alembic upgrade head
+    volumes:
+      - .:/workspace
+    depends_on:
+      - postgres
+
   openapi-export:
     build:
       context: ./backend

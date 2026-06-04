@@ -11,6 +11,7 @@ usage() {
     '  test       Run backend tests in Docker' \
     '  typecheck  Run mobile TypeScript checks in Docker' \
     '  generate-openapi  Generate mobile API client/types from backend OpenAPI' \
+    '  migrate-db Run Alembic migrations in Docker' \
     '  seed-db    Seed database tables in Docker' \
     '  update     Rebuild images and refresh npm install inside Docker volumes' \
     '  config     Render Docker Compose config' \
@@ -61,6 +62,7 @@ case "${1:-help}" in
     fi
 
     EXPO_PUBLIC_API_BASE_URL=http://$LAN_IP:8000 docker compose up --build --detach backend postgres redis worker scheduler otel-collector jaeger
+    EXPO_PUBLIC_API_BASE_URL=http://$LAN_IP:8000 docker compose run --rm migrate-db
     EXPO_PUBLIC_API_BASE_URL=http://$LAN_IP:8000 docker compose run --rm seed-db
     printf '%s\n' \
       "Backend: http://$LAN_IP:8000" \
@@ -77,7 +79,13 @@ case "${1:-help}" in
     docker compose build mobile-typecheck
     docker compose run --rm mobile-typecheck
     ;;
+  migrate-db)
+    docker compose build migrate-db
+    docker compose run --rm migrate-db
+    ;;
   seed-db)
+    docker compose build migrate-db
+    docker compose run --rm migrate-db
     docker compose build seed-db
     docker compose run --rm seed-db
     ;;

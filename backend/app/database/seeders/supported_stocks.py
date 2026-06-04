@@ -13,20 +13,6 @@ class SupportedStocksSeeder:
 
     def run(self, connection: object) -> None:
         with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS supported_stocks (
-                    ticker TEXT PRIMARY KEY,
-                    company_name TEXT NOT NULL,
-                    exchange TEXT NOT NULL,
-                    instrument_type TEXT NOT NULL,
-                    region TEXT NOT NULL,
-                    is_supported BOOLEAN NOT NULL,
-                    search_text TEXT NOT NULL
-                )
-                """
-            )
-
             with self.seed_file.open(newline="") as seed_data:
                 for row in csv.DictReader(seed_data):
                     if not self._is_supported_common_stock(row):
@@ -46,7 +32,7 @@ class SupportedStocksSeeder:
                     }
                     cursor.execute(
                         """
-                        INSERT INTO supported_stocks (
+                        INSERT INTO stocks (
                             ticker,
                             company_name,
                             exchange,
