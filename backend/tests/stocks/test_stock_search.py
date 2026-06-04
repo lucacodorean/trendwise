@@ -114,6 +114,8 @@ def test_postgres_stock_search_orders_exact_ticker_then_prefix_then_ticker() -> 
     params = connection.cursor_instance.params
 
     assert sql is not None
+    assert "FROM stocks" in sql
+    assert "FROM supported_stocks" not in sql
     assert "WHEN lower(ticker) = %(query)s THEN 0" in sql
     assert "WHEN lower(ticker) LIKE %(ticker_prefix)s ESCAPE '\\' THEN 1" in sql
     assert "ELSE 2" in sql
@@ -136,6 +138,8 @@ def test_postgres_stock_search_escapes_like_metacharacters() -> None:
     params = connection.cursor_instance.params
 
     assert sql is not None
+    assert "FROM stocks" in sql
+    assert "FROM supported_stocks" not in sql
     assert "search_text LIKE %(query_pattern)s ESCAPE '\\'" in sql
     assert "lower(ticker) LIKE %(ticker_prefix)s ESCAPE '\\'" in sql
     assert params == {
@@ -169,6 +173,8 @@ def test_postgres_stock_search_examples_preserve_fixed_order_and_map_rows() -> N
     params = connection.cursor_instance.params
 
     assert sql is not None
+    assert "FROM stocks" in sql
+    assert "FROM supported_stocks" not in sql
     assert "ANY(%(tickers)s)" in sql
     assert "array_position(%(tickers)s, ticker)" in sql
     assert params == {"tickers": ["AAPL", "MSFT", "NVDA", "TSLA"]}

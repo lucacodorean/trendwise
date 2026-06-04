@@ -18,12 +18,13 @@ class StockRow(TypedDict):
 
 class StockMarketDetailRow(TypedDict):
     latest_price: float
-    daily_change: float
-    daily_change_percent: float
+    daily_change: Optional[float]
+    daily_change_percent: Optional[float]
     observed_at: datetime
 
 
 class StockForecastDetailRow(TypedDict):
+    id: int
     status: str
     generated_at: datetime
 
@@ -63,6 +64,12 @@ def numeric_to_float(value: object) -> float:
     return float(value)  # type: ignore[arg-type]
 
 
+def optional_numeric_to_float(value: object) -> Optional[float]:
+    if value is None:
+        return None
+    return numeric_to_float(value)
+
+
 @dataclass
 class PostgresStockSearchRepository:
     connection: object
@@ -74,7 +81,7 @@ class PostgresStockSearchRepository:
             cursor.execute(
                 """
                 SELECT ticker, company_name, exchange
-                FROM supported_stocks
+                FROM stocks
                 WHERE is_supported = TRUE
                   AND search_text LIKE %(query_pattern)s ESCAPE '\\'
                 ORDER BY
@@ -102,7 +109,7 @@ class PostgresStockSearchRepository:
             cursor.execute(
                 """
                 SELECT ticker, company_name, exchange
-                FROM supported_stocks
+                FROM stocks
                 WHERE is_supported = TRUE
                   AND ticker = ANY(%(tickers)s)
                 ORDER BY array_position(%(tickers)s, ticker)
@@ -124,8 +131,8 @@ class PostgresStockDetailRepository:
         with self.connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT ticker, company_name, exchange
-                FROM supported_stocks
+                SELECT id, ticker, company_name, exchange
+                FROM stocks
                 WHERE is_supported = TRUE
                   AND ticker = %(ticker)s
                 """,
@@ -134,56 +141,75 @@ class PostgresStockDetailRepository:
             stock = cursor.fetchone()
             if stock is None:
                 return None
+            stock_id = stock[0]
 
             cursor.execute(
                 """
                 SELECT latest_price, daily_change, daily_change_percent, observed_at
-                FROM stock_market_details
-                WHERE ticker = %(ticker)s
+                FROM market_snapshots
+                WHERE stock_id = %(stock_id)s
+                ORDER BY observed_at DESC, id DESC
+                LIMIT 1
                 """,
-                {"ticker": normalized_ticker},
+                {"stock_id": stock_id},
             )
             market = cursor.fetchone()
 
             cursor.execute(
                 """
-                SELECT status, generated_at
-                FROM stock_forecast_details
-                WHERE ticker = %(ticker)s
+                SELECT id, status, generated_at
+                FROM forecast_runs
+                WHERE stock_id = %(stock_id)s
                   AND horizon = %(horizon)s
+                ORDER BY generated_at DESC, id DESC
+                LIMIT 1
                 """,
-                {"ticker": normalized_ticker, "horizon": horizon},
+                {"stock_id": stock_id, "horizon": horizon},
             )
             forecast = cursor.fetchone()
 
-            cursor.execute(
-                """
-                SELECT direction, confidence, expected_change_percent, risk_level, generated_at
-                FROM stock_prediction_details
-                WHERE ticker = %(ticker)s
-                  AND horizon = %(horizon)s
-                """,
-                {"ticker": normalized_ticker, "horizon": horizon},
-            )
+            if forecast is None:
+                cursor.execute(
+                    """
+                    SELECT direction, confidence, expected_change_percent, risk_level, generated_at
+                    FROM prediction_runs
+                    WHERE stock_id = %(stock_id)s
+                      AND horizon = %(horizon)s
+                    ORDER BY generated_at DESC, id DESC
+                    LIMIT 1
+                    """,
+                    {"stock_id": stock_id, "horizon": horizon},
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT direction, confidence, expected_change_percent, risk_level, generated_at
+                    FROM prediction_runs
+                    WHERE forecast_run_id = %(forecast_run_id)s
+                    ORDER BY generated_at DESC, id DESC
+                    LIMIT 1
+                    """,
+                    {"forecast_run_id": forecast[0]},
+                )
             prediction = cursor.fetchone()
 
         return {
             "stock": {
-                "ticker": stock[0],
-                "company_name": stock[1],
-                "exchange": stock[2],
+                "ticker": stock[1],
+                "company_name": stock[2],
+                "exchange": stock[3],
             },
             "market": None
             if market is None
             else {
                 "latest_price": numeric_to_float(market[0]),
-                "daily_change": numeric_to_float(market[1]),
-                "daily_change_percent": numeric_to_float(market[2]),
+                "daily_change": optional_numeric_to_float(market[1]),
+                "daily_change_percent": optional_numeric_to_float(market[2]),
                 "observed_at": market[3],
             },
             "forecast": None
             if forecast is None
-            else {"status": forecast[0], "generated_at": forecast[1]},
+            else {"status": forecast[1], "generated_at": forecast[2]},
             "prediction": None
             if prediction is None
             else {

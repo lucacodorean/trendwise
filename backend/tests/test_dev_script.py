@@ -17,6 +17,18 @@ def test_dev_script_runs_database_seeder_through_docker() -> None:
     assert "docker compose run --rm seed-db" in script
 
 
+def test_dev_script_runs_alembic_migrations_through_docker() -> None:
+    script = (Path(__file__).resolve().parents[2] / "scripts" / "dev").read_text()
+    seed_db_branch = script.split("seed-db)", 1)[1].split("generate-openapi)", 1)[0]
+
+    assert "migrate-db" in script
+    assert "docker compose build migrate-db" in script
+    assert "docker compose run --rm migrate-db" in script
+    assert seed_db_branch.index("docker compose run --rm migrate-db") < seed_db_branch.index(
+        "docker compose run --rm seed-db"
+    )
+
+
 def test_dev_script_generates_mobile_openapi_client_through_docker() -> None:
     script = (Path(__file__).resolve().parents[2] / "scripts" / "dev").read_text()
 
@@ -119,12 +131,16 @@ def test_dev_script_declares_expo_helper_command() -> None:
 
 def test_dev_script_expo_helper_detects_lan_ip_and_prints_expo_url() -> None:
     script = (Path(__file__).resolve().parents[2] / "scripts" / "dev").read_text()
+    expo_branch = script.split("expo)", 1)[1].split("test)", 1)[0]
 
     assert "detect_lan_ip" in script
     assert "ipconfig getifaddr en0" in script
     assert "ipconfig getifaddr en1" in script
     assert "EXPO_PUBLIC_API_BASE_URL=http://$LAN_IP:8000 docker compose up --build --detach backend postgres redis worker scheduler otel-collector jaeger" in script
     assert "EXPO_PUBLIC_API_BASE_URL=http://$LAN_IP:8000 docker compose run --rm seed-db" in script
+    assert expo_branch.index("docker compose run --rm migrate-db") < expo_branch.index(
+        "docker compose run --rm seed-db"
+    )
     assert "cd mobile" in script
     assert "EXPO_PUBLIC_API_BASE_URL=http://$LAN_IP:8000 npx expo start --host lan" in script
     assert "exp://$LAN_IP:8081" in script
