@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import math
 from typing import Callable, Optional
 from urllib.parse import quote
 
@@ -34,7 +35,10 @@ def _required_number(value: object, field_name: str) -> float:
         raise ProviderMissingDataError(field_name)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ProviderMalformedDataError(f"{field_name} must be numeric")
-    return float(value)
+    number = float(value)
+    if not math.isfinite(number):
+        raise ProviderMalformedDataError(f"{field_name} must be finite")
+    return number
 
 
 def _optional_number(value: object, field_name: str) -> Optional[float]:
@@ -42,7 +46,10 @@ def _optional_number(value: object, field_name: str) -> Optional[float]:
         return None
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ProviderMalformedDataError(f"{field_name} must be numeric")
-    return float(value)
+    number = float(value)
+    if not math.isfinite(number):
+        raise ProviderMalformedDataError(f"{field_name} must be finite")
+    return number
 
 
 def _optional_int(value: object, field_name: str) -> Optional[int]:
@@ -105,6 +112,17 @@ def _required_string(value: object, field_name: str) -> str:
     return cleaned
 
 
+def _ticker_set(values: list[object], field_name: str) -> set[str]:
+    tickers: set[str] = set()
+    for value in values:
+        if not isinstance(value, str):
+            raise ProviderMalformedDataError(f"{field_name} must contain strings")
+        cleaned = value.strip().upper()
+        if cleaned:
+            tickers.add(cleaned)
+    return tickers
+
+
 @dataclass
 class YahooMarketDataAdapter:
     http_client: JsonHttpClient = UrlLibJsonHttpClient()
@@ -130,7 +148,10 @@ class YahooMarketDataAdapter:
         if not historical_prices:
             raise ProviderMissingDataError("historical_prices")
         observed_at = historical_prices[-1].timestamp
-        if self.now().astimezone(timezone.utc) - observed_at > self.max_age:
+        now_utc = self.now().astimezone(timezone.utc)
+        if observed_at > now_utc:
+            raise ProviderMalformedDataError("market data timestamp is in the future")
+        if now_utc - observed_at > self.max_age:
             raise ProviderStaleDataError("market data is stale")
 
         return MarketDataResult(
@@ -194,7 +215,7 @@ class YahooCompanyNewsAdapter:
         for index, item in enumerate(news_items):
             news_item = _object(item, f"news[{index}]")
             related_tickers = _list(news_item.get("relatedTickers"), "relatedTickers")
-            if stock.ticker not in {str(ticker).upper() for ticker in related_tickers}:
+            if stock.ticker not in _ticker_set(related_tickers, "relatedTickers"):
                 raise ProviderUnsupportedStockError("Yahoo response did not match requested Stock")
             normalized.append(
                 CompanyNewsItem(
