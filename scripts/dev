@@ -52,10 +52,7 @@ require_mobile_api_base_url() {
 case "${1:-help}" in
   up)
     require_mobile_api_base_url
-    docker compose up --build --detach postgres redis
-    docker compose run --rm migrate-db
-    docker compose run --rm seed-db
-    docker compose up --build backend worker scheduler otel-collector jaeger
+    docker compose up --build
     ;;
   expo)
     LAN_IP="$(detect_lan_ip)"

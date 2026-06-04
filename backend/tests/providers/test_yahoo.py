@@ -171,6 +171,7 @@ def yahoo_news_response() -> dict[str, object]:
                 "publisher": "Example Wire",
                 "link": "https://finance.yahoo.com/news/apple-supplier-update",
                 "providerPublishTime": 1780579800,
+                "relatedTickers": ["AAPL"],
                 "summary": "This field must not appear in normalized Company News.",
             }
         ]
@@ -235,6 +236,50 @@ def test_yahoo_market_adapter_rejects_malformed_numeric_values() -> None:
         adapter.get_market_data(SupportedStock("AAPL", "Apple Inc.", "NASDAQ"))
 
 
+def test_yahoo_market_adapter_accepts_missing_optional_price_arrays() -> None:
+    response = yahoo_chart_response()
+    quote = response["chart"]["result"][0]["indicators"]["quote"][0]
+    quote.pop("open")
+    quote.pop("high")
+    quote.pop("low")
+    quote.pop("volume")
+    adapter = YahooMarketDataAdapter(
+        http_client=FakeHttpClient({"chart": response}),
+        now=lambda: datetime(2026, 6, 4, 14, 0, tzinfo=timezone.utc),
+    )
+
+    result = adapter.get_market_data(SupportedStock("AAPL", "Apple Inc.", "NASDAQ"))
+
+    assert result.historical_prices[-1].open is None
+    assert result.historical_prices[-1].high is None
+    assert result.historical_prices[-1].low is None
+    assert result.historical_prices[-1].volume is None
+
+
+def test_yahoo_market_adapter_rejects_boolean_numeric_values() -> None:
+    response = yahoo_chart_response()
+    response["chart"]["result"][0]["meta"]["regularMarketPrice"] = True
+    adapter = YahooMarketDataAdapter(
+        http_client=FakeHttpClient({"chart": response}),
+        now=lambda: datetime(2026, 6, 4, 14, 0, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(ProviderMalformedDataError, match="regularMarketPrice"):
+        adapter.get_market_data(SupportedStock("AAPL", "Apple Inc.", "NASDAQ"))
+
+
+def test_yahoo_market_adapter_rejects_out_of_range_timestamp() -> None:
+    response = yahoo_chart_response()
+    response["chart"]["result"][0]["timestamp"][1] = 10**100
+    adapter = YahooMarketDataAdapter(
+        http_client=FakeHttpClient({"chart": response}),
+        now=lambda: datetime(2026, 6, 4, 14, 0, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(ProviderMalformedDataError, match="timestamp"):
+        adapter.get_market_data(SupportedStock("AAPL", "Apple Inc.", "NASDAQ"))
+
+
 def test_yahoo_market_adapter_propagates_transport_errors() -> None:
     adapter = YahooMarketDataAdapter(http_client=FailingHttpClient())
 
@@ -248,4 +293,20 @@ def test_yahoo_news_adapter_rejects_malformed_timestamp() -> None:
     adapter = YahooCompanyNewsAdapter(http_client=FakeHttpClient({"search": response}))
 
     with pytest.raises(ProviderMalformedDataError, match="providerPublishTime"):
+        adapter.get_company_news(SupportedStock("AAPL", "Apple Inc.", "NASDAQ"))
+
+
+def test_yahoo_news_adapter_rejects_unrelated_news_items() -> None:
+    response = yahoo_news_response()
+    response["news"][0]["relatedTickers"] = ["MSFT"]
+    adapter = YahooCompanyNewsAdapter(http_client=FakeHttpClient({"search": response}))
+
+    with pytest.raises(ProviderUnsupportedStockError, match="requested Stock"):
+        adapter.get_company_news(SupportedStock("AAPL", "Apple Inc.", "NASDAQ"))
+
+
+def test_yahoo_news_adapter_propagates_transport_errors() -> None:
+    adapter = YahooCompanyNewsAdapter(http_client=FailingHttpClient())
+
+    with pytest.raises(ProviderTransportError, match="network unavailable"):
         adapter.get_company_news(SupportedStock("AAPL", "Apple Inc.", "NASDAQ"))

@@ -21,15 +21,18 @@ YAHOO_NEWS_URL = "https://query1.finance.yahoo.com/v1/finance/search?q={ticker}&
 
 
 def _utc_from_epoch(value: object, field_name: str) -> datetime:
-    if not isinstance(value, (int, float)):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ProviderMalformedDataError(f"{field_name} must be a Unix timestamp")
-    return datetime.fromtimestamp(value, tz=timezone.utc)
+    try:
+        return datetime.fromtimestamp(value, tz=timezone.utc)
+    except (OverflowError, OSError, ValueError) as exc:
+        raise ProviderMalformedDataError(f"{field_name} must be a valid Unix timestamp") from exc
 
 
 def _required_number(value: object, field_name: str) -> float:
     if value is None:
         raise ProviderMissingDataError(field_name)
-    if not isinstance(value, (int, float)):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ProviderMalformedDataError(f"{field_name} must be numeric")
     return float(value)
 
@@ -37,7 +40,7 @@ def _required_number(value: object, field_name: str) -> float:
 def _optional_number(value: object, field_name: str) -> Optional[float]:
     if value is None:
         return None
-    if not isinstance(value, (int, float)):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ProviderMalformedDataError(f"{field_name} must be numeric")
     return float(value)
 
@@ -45,7 +48,7 @@ def _optional_number(value: object, field_name: str) -> Optional[float]:
 def _optional_int(value: object, field_name: str) -> Optional[int]:
     if value is None:
         return None
-    if not isinstance(value, int):
+    if isinstance(value, bool) or not isinstance(value, int):
         raise ProviderMalformedDataError(f"{field_name} must be an integer")
     return value
 
@@ -64,6 +67,15 @@ def _list(value: object, field_name: str) -> list[object]:
 
 def _quote_values(quote_payload: dict[str, object], key: str) -> list[object]:
     values = quote_payload.get(key)
+    if not isinstance(values, list):
+        raise ProviderMalformedDataError(f"quote.{key} must be a list")
+    return values
+
+
+def _optional_quote_values(quote_payload: dict[str, object], key: str) -> list[object]:
+    values = quote_payload.get(key)
+    if values is None:
+        return []
     if not isinstance(values, list):
         raise ProviderMalformedDataError(f"quote.{key} must be a list")
     return values
@@ -147,11 +159,11 @@ class YahooMarketDataAdapter:
         if not quote_list:
             raise ProviderMissingDataError("indicators.quote")
         quote_payload = _object(quote_list[0], "indicators.quote[0]")
-        opens = _quote_values(quote_payload, "open")
-        highs = _quote_values(quote_payload, "high")
-        lows = _quote_values(quote_payload, "low")
+        opens = _optional_quote_values(quote_payload, "open")
+        highs = _optional_quote_values(quote_payload, "high")
+        lows = _optional_quote_values(quote_payload, "low")
         closes = _quote_values(quote_payload, "close")
-        volumes = _quote_values(quote_payload, "volume")
+        volumes = _optional_quote_values(quote_payload, "volume")
 
         prices: list[PricePoint] = []
         for index, timestamp in enumerate(timestamps):
@@ -181,6 +193,9 @@ class YahooCompanyNewsAdapter:
         normalized: list[CompanyNewsItem] = []
         for index, item in enumerate(news_items):
             news_item = _object(item, f"news[{index}]")
+            related_tickers = _list(news_item.get("relatedTickers"), "relatedTickers")
+            if stock.ticker not in {str(ticker).upper() for ticker in related_tickers}:
+                raise ProviderUnsupportedStockError("Yahoo response did not match requested Stock")
             normalized.append(
                 CompanyNewsItem(
                     stock=stock,
