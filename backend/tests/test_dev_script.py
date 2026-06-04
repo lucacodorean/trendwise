@@ -29,6 +29,22 @@ def test_dev_script_runs_alembic_migrations_through_docker() -> None:
     )
 
 
+def test_dev_script_up_migrates_and_seeds_before_starting_backend() -> None:
+    script = (Path(__file__).resolve().parents[2] / "scripts" / "dev").read_text()
+    up_branch = script.split("up)", 1)[1].split("expo)", 1)[0]
+
+    assert "docker compose up --build --detach postgres redis" in up_branch
+    assert "docker compose run --rm migrate-db" in up_branch
+    assert "docker compose run --rm seed-db" in up_branch
+    assert "docker compose up --build backend worker scheduler otel-collector jaeger" in up_branch
+    assert up_branch.index("docker compose run --rm migrate-db") < up_branch.index(
+        "docker compose run --rm seed-db"
+    )
+    assert up_branch.index("docker compose run --rm seed-db") < up_branch.index(
+        "docker compose up --build backend worker scheduler otel-collector jaeger"
+    )
+
+
 def test_dev_script_generates_mobile_openapi_client_through_docker() -> None:
     script = (Path(__file__).resolve().parents[2] / "scripts" / "dev").read_text()
 
