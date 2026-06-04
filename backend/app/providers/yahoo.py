@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import math
 from typing import Callable, Optional
@@ -125,7 +125,7 @@ def _ticker_set(values: list[object], field_name: str) -> set[str]:
 
 @dataclass
 class YahooMarketDataAdapter:
-    http_client: JsonHttpClient = UrlLibJsonHttpClient()
+    http_client: JsonHttpClient = field(default_factory=UrlLibJsonHttpClient)
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
     max_age: timedelta = timedelta(days=7)
 
@@ -189,7 +189,7 @@ class YahooMarketDataAdapter:
         prices: list[PricePoint] = []
         for index, timestamp in enumerate(timestamps):
             if index >= len(closes) or closes[index] is None:
-                continue
+                raise ProviderMissingDataError("close")
             prices.append(
                 PricePoint(
                     timestamp=_utc_from_epoch(timestamp, "timestamp"),
@@ -205,7 +205,7 @@ class YahooMarketDataAdapter:
 
 @dataclass
 class YahooCompanyNewsAdapter:
-    http_client: JsonHttpClient = UrlLibJsonHttpClient()
+    http_client: JsonHttpClient = field(default_factory=UrlLibJsonHttpClient)
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
 
     def get_company_news(self, stock: SupportedStock) -> list[CompanyNewsItem]:

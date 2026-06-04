@@ -236,6 +236,30 @@ def test_yahoo_market_adapter_rejects_malformed_numeric_values() -> None:
         adapter.get_market_data(SupportedStock("AAPL", "Apple Inc.", "NASDAQ"))
 
 
+def test_yahoo_market_adapter_rejects_missing_close_for_timestamp_row() -> None:
+    response = yahoo_chart_response()
+    response["chart"]["result"][0]["indicators"]["quote"][0]["close"][1] = None
+    adapter = YahooMarketDataAdapter(
+        http_client=FakeHttpClient({"chart": response}),
+        now=lambda: datetime(2026, 6, 4, 14, 0, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(ProviderMissingDataError, match="close"):
+        adapter.get_market_data(SupportedStock("AAPL", "Apple Inc.", "NASDAQ"))
+
+
+def test_yahoo_market_adapter_rejects_missing_close_array_entry_for_timestamp_row() -> None:
+    response = yahoo_chart_response()
+    response["chart"]["result"][0]["indicators"]["quote"][0]["close"] = [214.1]
+    adapter = YahooMarketDataAdapter(
+        http_client=FakeHttpClient({"chart": response}),
+        now=lambda: datetime(2026, 6, 4, 14, 0, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(ProviderMissingDataError, match="close"):
+        adapter.get_market_data(SupportedStock("AAPL", "Apple Inc.", "NASDAQ"))
+
+
 def test_yahoo_market_adapter_accepts_missing_optional_price_arrays() -> None:
     response = yahoo_chart_response()
     quote = response["chart"]["result"][0]["indicators"]["quote"][0]

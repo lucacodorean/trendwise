@@ -16,7 +16,7 @@ class UrlLibJsonHttpClient:
         try:
             with urlopen(request, timeout=10) as response:
                 payload = json.loads(response.read().decode("utf-8"))
-        except (OSError, URLError, json.JSONDecodeError) as error:
+        except (OSError, URLError, UnicodeDecodeError, json.JSONDecodeError) as error:
             raise ProviderTransportError(str(error)) from error
 
         if not isinstance(payload, dict):
