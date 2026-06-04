@@ -149,7 +149,7 @@ class YahooMarketDataAdapter:
             raise ProviderMissingDataError("historical_prices")
         observed_at = historical_prices[-1].timestamp
         now_utc = self.now().astimezone(timezone.utc)
-        if observed_at > now_utc:
+        if any(point.timestamp > now_utc for point in historical_prices):
             raise ProviderMalformedDataError("market data timestamp is in the future")
         if now_utc - observed_at > self.max_age:
             raise ProviderStaleDataError("market data is stale")
@@ -206,17 +206,22 @@ class YahooMarketDataAdapter:
 @dataclass
 class YahooCompanyNewsAdapter:
     http_client: JsonHttpClient = UrlLibJsonHttpClient()
+    now: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
 
     def get_company_news(self, stock: SupportedStock) -> list[CompanyNewsItem]:
         url = YAHOO_NEWS_URL.format(ticker=quote(stock.ticker))
         payload = self.http_client.get_json(url)
         news_items = _list(payload.get("news"), "news")
         normalized: list[CompanyNewsItem] = []
+        now_utc = self.now().astimezone(timezone.utc)
         for index, item in enumerate(news_items):
             news_item = _object(item, f"news[{index}]")
             related_tickers = _list(news_item.get("relatedTickers"), "relatedTickers")
             if stock.ticker not in _ticker_set(related_tickers, "relatedTickers"):
                 raise ProviderUnsupportedStockError("Yahoo response did not match requested Stock")
+            published_at = _utc_from_epoch(news_item.get("providerPublishTime"), "providerPublishTime")
+            if published_at > now_utc:
+                raise ProviderMalformedDataError("news timestamp is in the future")
             normalized.append(
                 CompanyNewsItem(
                     stock=stock,
@@ -224,7 +229,7 @@ class YahooCompanyNewsAdapter:
                     title=_required_string(news_item.get("title"), "title"),
                     url=_optional_string(news_item.get("link"), "link"),
                     publisher=_optional_string(news_item.get("publisher"), "publisher"),
-                    published_at=_utc_from_epoch(news_item.get("providerPublishTime"), "providerPublishTime"),
+                    published_at=published_at,
                     provider_id=_optional_string(news_item.get("uuid"), "uuid"),
                 )
             )
