@@ -1,21 +1,12 @@
 from datetime import datetime, timezone
-from enum import Enum
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.forecasts.models import ForecastHorizon
+
 
 DISCLAIMER = "Trendwise outputs are informational estimates only. They are not financial advice or trading recommendations."
-
-
-class ForecastHorizon(str, Enum):
-    thirty_minutes = "30m"
-    one_day = "1d"
-    five_days = "5d"
-    seven_days = "7d"
-    one_month = "1mo"
-    six_months = "6mo"
-    one_year = "1y"
 
 
 def format_utc_datetime(value: datetime) -> str:
@@ -59,6 +50,30 @@ class StockDetailForecast(BaseModel):
     status: str
     generated_at: Optional[str] = Field(serialization_alias="generatedAt")
     freshness_label: str = Field(serialization_alias="freshnessLabel")
+    line_points: list["StockDetailForecastLinePoint"] = Field(
+        default_factory=list,
+        serialization_alias="linePoints",
+    )
+    candlesticks: list["StockDetailForecastCandlestick"] = Field(default_factory=list)
+
+
+class StockDetailForecastLinePoint(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    sequence: int
+    timestamp: str
+    expected_value: float = Field(serialization_alias="expectedValue")
+    lower_bound: float = Field(serialization_alias="lowerBound")
+    upper_bound: float = Field(serialization_alias="upperBound")
+
+
+class StockDetailForecastCandlestick(BaseModel):
+    sequence: int
+    timestamp: str
+    open: float
+    high: float
+    low: float
+    close: float
 
 
 class StockDetailPrediction(BaseModel):
@@ -71,6 +86,23 @@ class StockDetailPrediction(BaseModel):
     risk_level: Optional[Literal["low", "medium", "high"]] = Field(serialization_alias="riskLevel")
     generated_at: Optional[str] = Field(serialization_alias="generatedAt")
     freshness_label: str = Field(serialization_alias="freshnessLabel")
+    key_factors: list["StockDetailKeyFactor"] = Field(
+        default_factory=list,
+        serialization_alias="keyFactors",
+    )
+
+
+class StockDetailKeyFactor(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    factor_type: str = Field(serialization_alias="factorType")
+    source_reference_type: Optional[str] = Field(serialization_alias="sourceReferenceType")
+    source_id: Optional[int] = Field(serialization_alias="sourceId")
+    label: str
+    value: Optional[float]
+    rationale: Optional[str]
+    polarity: Literal["positive", "negative", "neutral"]
+    weight: Optional[float]
 
 
 class StockDetailResponse(BaseModel):

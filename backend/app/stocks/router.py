@@ -12,6 +12,9 @@ from app.stocks.schemas import (
     DISCLAIMER,
     ForecastHorizon,
     StockDetailForecast,
+    StockDetailForecastCandlestick,
+    StockDetailForecastLinePoint,
+    StockDetailKeyFactor,
     StockDetailMarket,
     StockDetailPrediction,
     StockDetailResponse,
@@ -91,6 +94,27 @@ def get_stock_detail(
             status=forecast_row["status"],
             generated_at=forecast_generated_at,
             freshness_label=f"Forecast checked at {forecast_generated_at}",
+            line_points=[
+                StockDetailForecastLinePoint(
+                    sequence=point["sequence"],
+                    timestamp=format_utc_datetime(point["timestamp"]),
+                    expected_value=point["expected_value"],
+                    lower_bound=point["lower_bound"],
+                    upper_bound=point["upper_bound"],
+                )
+                for point in forecast_row["line_points"]
+            ],
+            candlesticks=[
+                StockDetailForecastCandlestick(
+                    sequence=candlestick["sequence"],
+                    timestamp=format_utc_datetime(candlestick["timestamp"]),
+                    open=candlestick["open"],
+                    high=candlestick["high"],
+                    low=candlestick["low"],
+                    close=candlestick["close"],
+                )
+                for candlestick in forecast_row["candlesticks"]
+            ],
         )
 
     prediction_row = detail["prediction"]
@@ -114,6 +138,19 @@ def get_stock_detail(
             risk_level=prediction_row["risk_level"],
             generated_at=prediction_generated_at,
             freshness_label=f"Prediction fresh at {prediction_generated_at}",
+            key_factors=[
+                StockDetailKeyFactor(
+                    factor_type=factor["factor_type"],
+                    source_reference_type=factor["source_reference_type"],
+                    source_id=factor["source_id"],
+                    label=factor["label"],
+                    value=factor["value"],
+                    rationale=factor["rationale"],
+                    polarity=factor["polarity"],
+                    weight=factor["weight"],
+                )
+                for factor in prediction_row["key_factors"]
+            ],
         )
 
     return StockDetailResponse(

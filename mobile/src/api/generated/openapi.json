@@ -29,6 +29,13 @@
       },
       "StockDetailForecast": {
         "properties": {
+          "candlesticks": {
+            "items": {
+              "$ref": "#/components/schemas/StockDetailForecastCandlestick"
+            },
+            "title": "Candlesticks",
+            "type": "array"
+          },
           "freshnessLabel": {
             "title": "Freshnesslabel",
             "type": "string"
@@ -44,6 +51,13 @@
             ],
             "title": "Generatedat"
           },
+          "linePoints": {
+            "items": {
+              "$ref": "#/components/schemas/StockDetailForecastLinePoint"
+            },
+            "title": "Linepoints",
+            "type": "array"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -55,6 +69,165 @@
           "freshnessLabel"
         ],
         "title": "StockDetailForecast",
+        "type": "object"
+      },
+      "StockDetailForecastCandlestick": {
+        "properties": {
+          "close": {
+            "title": "Close",
+            "type": "number"
+          },
+          "high": {
+            "title": "High",
+            "type": "number"
+          },
+          "low": {
+            "title": "Low",
+            "type": "number"
+          },
+          "open": {
+            "title": "Open",
+            "type": "number"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sequence",
+          "timestamp",
+          "open",
+          "high",
+          "low",
+          "close"
+        ],
+        "title": "StockDetailForecastCandlestick",
+        "type": "object"
+      },
+      "StockDetailForecastLinePoint": {
+        "properties": {
+          "expectedValue": {
+            "title": "Expectedvalue",
+            "type": "number"
+          },
+          "lowerBound": {
+            "title": "Lowerbound",
+            "type": "number"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "upperBound": {
+            "title": "Upperbound",
+            "type": "number"
+          }
+        },
+        "required": [
+          "sequence",
+          "timestamp",
+          "expectedValue",
+          "lowerBound",
+          "upperBound"
+        ],
+        "title": "StockDetailForecastLinePoint",
+        "type": "object"
+      },
+      "StockDetailKeyFactor": {
+        "properties": {
+          "factorType": {
+            "title": "Factortype",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "polarity": {
+            "enum": [
+              "positive",
+              "negative",
+              "neutral"
+            ],
+            "title": "Polarity",
+            "type": "string"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "sourceId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceid"
+          },
+          "sourceReferenceType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcereferencetype"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          }
+        },
+        "required": [
+          "factorType",
+          "sourceReferenceType",
+          "sourceId",
+          "label",
+          "value",
+          "rationale",
+          "polarity",
+          "weight"
+        ],
+        "title": "StockDetailKeyFactor",
         "type": "object"
       },
       "StockDetailMarket": {
@@ -177,6 +350,13 @@
               }
             ],
             "title": "Generatedat"
+          },
+          "keyFactors": {
+            "items": {
+              "$ref": "#/components/schemas/StockDetailKeyFactor"
+            },
+            "title": "Keyfactors",
+            "type": "array"
           },
           "riskLevel": {
             "anyOf": [

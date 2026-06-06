@@ -27,6 +27,25 @@ class StockForecastDetailRow(TypedDict):
     id: int
     status: str
     generated_at: datetime
+    line_points: list["StockForecastLinePointRow"]
+    candlesticks: list["StockForecastCandlestickRow"]
+
+
+class StockForecastLinePointRow(TypedDict):
+    sequence: int
+    timestamp: datetime
+    expected_value: float
+    lower_bound: float
+    upper_bound: float
+
+
+class StockForecastCandlestickRow(TypedDict):
+    sequence: int
+    timestamp: datetime
+    open: float
+    high: float
+    low: float
+    close: float
 
 
 class StockPredictionDetailRow(TypedDict):
@@ -35,6 +54,18 @@ class StockPredictionDetailRow(TypedDict):
     expected_change_percent: float
     risk_level: str
     generated_at: datetime
+    key_factors: list["StockDetailKeyFactorRow"]
+
+
+class StockDetailKeyFactorRow(TypedDict):
+    factor_type: str
+    source_reference_type: Optional[str]
+    source_id: Optional[int]
+    label: str
+    value: Optional[float]
+    rationale: Optional[str]
+    polarity: str
+    weight: Optional[float]
 
 
 class StockDetailRow(TypedDict):
@@ -168,10 +199,54 @@ class PostgresStockDetailRepository:
             )
             forecast = cursor.fetchone()
 
+            line_points: list[StockForecastLinePointRow] = []
+            candlesticks: list[StockForecastCandlestickRow] = []
+            if forecast is not None:
+                cursor.execute(
+                    """
+                    SELECT sequence, timestamp, expected_value, lower_bound, upper_bound
+                    FROM forecast_line_points
+                    WHERE forecast_run_id = %(forecast_run_id)s
+                    ORDER BY sequence ASC
+                    """,
+                    {"forecast_run_id": forecast[0]},
+                )
+                line_points = [
+                    {
+                        "sequence": row[0],
+                        "timestamp": row[1],
+                        "expected_value": numeric_to_float(row[2]),
+                        "lower_bound": numeric_to_float(row[3]),
+                        "upper_bound": numeric_to_float(row[4]),
+                    }
+                    for row in cursor.fetchall()
+                ]
+
+                cursor.execute(
+                    """
+                    SELECT sequence, timestamp, open_price, high_price, low_price, close_price
+                    FROM forecast_candlesticks
+                    WHERE forecast_run_id = %(forecast_run_id)s
+                    ORDER BY sequence ASC
+                    """,
+                    {"forecast_run_id": forecast[0]},
+                )
+                candlesticks = [
+                    {
+                        "sequence": row[0],
+                        "timestamp": row[1],
+                        "open": numeric_to_float(row[2]),
+                        "high": numeric_to_float(row[3]),
+                        "low": numeric_to_float(row[4]),
+                        "close": numeric_to_float(row[5]),
+                    }
+                    for row in cursor.fetchall()
+                ]
+
             if forecast is None:
                 cursor.execute(
                     """
-                    SELECT direction, confidence, expected_change_percent, risk_level, generated_at
+                    SELECT id, direction, confidence, expected_change_percent, risk_level, generated_at
                     FROM prediction_runs
                     WHERE stock_id = %(stock_id)s
                       AND horizon = %(horizon)s
@@ -183,7 +258,7 @@ class PostgresStockDetailRepository:
             else:
                 cursor.execute(
                     """
-                    SELECT direction, confidence, expected_change_percent, risk_level, generated_at
+                    SELECT id, direction, confidence, expected_change_percent, risk_level, generated_at
                     FROM prediction_runs
                     WHERE forecast_run_id = %(forecast_run_id)s
                     ORDER BY generated_at DESC, id DESC
@@ -192,6 +267,40 @@ class PostgresStockDetailRepository:
                     {"forecast_run_id": forecast[0]},
                 )
             prediction = cursor.fetchone()
+
+            key_factors: list[StockDetailKeyFactorRow] = []
+            if prediction is not None:
+                cursor.execute(
+                    """
+                    SELECT
+                        sequence,
+                        factor_type,
+                        source_reference_type,
+                        source_id,
+                        label,
+                        numeric_value,
+                        rationale,
+                        polarity,
+                        weight
+                    FROM prediction_key_factors
+                    WHERE prediction_run_id = %(prediction_run_id)s
+                    ORDER BY sequence ASC
+                    """,
+                    {"prediction_run_id": prediction[0]},
+                )
+                key_factors = [
+                    {
+                        "factor_type": row[1],
+                        "source_reference_type": row[2],
+                        "source_id": row[3],
+                        "label": row[4],
+                        "value": optional_numeric_to_float(row[5]),
+                        "rationale": row[6],
+                        "polarity": row[7],
+                        "weight": optional_numeric_to_float(row[8]),
+                    }
+                    for row in cursor.fetchall()
+                ]
 
         return {
             "stock": {
@@ -209,15 +318,21 @@ class PostgresStockDetailRepository:
             },
             "forecast": None
             if forecast is None
-            else {"status": forecast[1], "generated_at": forecast[2]},
+            else {
+                "status": forecast[1],
+                "generated_at": forecast[2],
+                "line_points": line_points,
+                "candlesticks": candlesticks,
+            },
             "prediction": None
             if prediction is None
             else {
-                "direction": prediction[0],
-                "confidence": numeric_to_float(prediction[1]),
-                "expected_change_percent": numeric_to_float(prediction[2]),
-                "risk_level": prediction[3],
-                "generated_at": prediction[4],
+                "direction": prediction[1],
+                "confidence": numeric_to_float(prediction[2]),
+                "expected_change_percent": numeric_to_float(prediction[3]),
+                "risk_level": prediction[4],
+                "generated_at": prediction[5],
+                "key_factors": key_factors,
             },
         }
 

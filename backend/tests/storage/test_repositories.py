@@ -3,6 +3,12 @@ from typing import Optional
 
 import pytest
 
+from app.forecasts.models import (
+    ForecastCandlestick,
+    ForecastLinePoint,
+    ForecastPrediction,
+    KeyFactorInput,
+)
 from app.storage.repositories import PostgresPersistenceRepository
 
 
@@ -153,6 +159,134 @@ def test_repository_retrieves_snapshot_forecast_and_prediction_for_stock_horizon
     assert "s.ticker = %(ticker)s" in sql
     assert "fr.horizon = %(horizon)s" in sql
     assert params == {"ticker": "AAPL", "horizon": "1d"}
+
+
+def test_repository_stores_detailed_forecast_prediction_in_one_transaction() -> None:
+    connection = RecordingConnection()
+    repository = PostgresPersistenceRepository(connection)
+    observed_at = datetime(2026, 6, 3, 13, 30, tzinfo=timezone.utc)
+    generated_at = datetime(2026, 6, 3, 14, 0, tzinfo=timezone.utc)
+
+    result = repository.store_detailed_forecast_prediction(
+        ticker="aapl",
+        company_name="Apple Inc.",
+        exchange="NASDAQ",
+        horizon="1d",
+        latest_price=214.35,
+        daily_change=2.62,
+        daily_change_percent=1.24,
+        observed_at=observed_at,
+        forecast_status="generated",
+        forecast_generated_at=generated_at,
+        line_points=[
+            ForecastLinePoint(
+                sequence=1,
+                timestamp=datetime(2026, 6, 4, 14, 0, tzinfo=timezone.utc),
+                expected_value=216.0,
+                lower_bound=212.0,
+                upper_bound=219.0,
+            )
+        ],
+        candlesticks=[
+            ForecastCandlestick(
+                sequence=1,
+                timestamp=datetime(2026, 6, 4, 14, 0, tzinfo=timezone.utc),
+                open=214.35,
+                high=218.0,
+                low=213.0,
+                close=216.0,
+            )
+        ],
+        prediction=ForecastPrediction(
+            direction="bullish",
+            confidence=0.68,
+            expected_change_percent=0.8,
+            risk_level="medium",
+        ),
+        prediction_generated_at=generated_at,
+        key_factors=[
+            KeyFactorInput(
+                factor_type="market_snapshot",
+                source_reference_type="market_snapshot",
+                source_id=201,
+                label="Positive daily change",
+                value=1.24,
+                rationale="Price moved higher today.",
+                polarity="positive",
+                weight=0.5,
+            )
+        ],
+        company_news_ids=[301],
+        external_factor_ids=[401],
+    )
+
+    assert result == {
+        "stock_id": 101,
+        "market_snapshot_id": 201,
+        "forecast_run_id": 301,
+        "prediction_run_id": 401,
+    }
+    sql_sections = [sql for sql, _ in connection.cursor_instance.executions]
+    all_sql = "\n".join(sql_sections)
+    assert "INSERT INTO forecast_line_points" in all_sql
+    assert "INSERT INTO forecast_candlesticks" in all_sql
+    assert "INSERT INTO forecast_source_company_news" in all_sql
+    assert "INSERT INTO forecast_source_external_factors" in all_sql
+    assert "INSERT INTO prediction_key_factors" in all_sql
+    assert connection.commits == 1
+
+    forecast_source_sql = "\n".join(
+        sql
+        for sql in sql_sections
+        if "INSERT INTO forecast_source_" in sql
+    )
+    assert "prediction_runs.id" not in forecast_source_sql
+
+
+def test_repository_rolls_back_detailed_forecast_when_detail_insert_fails() -> None:
+    connection = RecordingConnection()
+    connection.cursor_instance.fail_on_execution = 6
+    repository = PostgresPersistenceRepository(connection)
+    observed_at = datetime(2026, 6, 3, 13, 30, tzinfo=timezone.utc)
+    generated_at = datetime(2026, 6, 3, 14, 0, tzinfo=timezone.utc)
+
+    with pytest.raises(RuntimeError, match="cursor failure"):
+        repository.store_detailed_forecast_prediction(
+            ticker="aapl",
+            company_name="Apple Inc.",
+            exchange="NASDAQ",
+            horizon="1d",
+            latest_price=214.35,
+            daily_change=2.62,
+            daily_change_percent=1.24,
+            observed_at=observed_at,
+            forecast_status="generated",
+            forecast_generated_at=generated_at,
+            line_points=[
+                ForecastLinePoint(
+                    sequence=1,
+                    timestamp=datetime(2026, 6, 4, 14, 0, tzinfo=timezone.utc),
+                    expected_value=216.0,
+                    lower_bound=212.0,
+                    upper_bound=219.0,
+                )
+            ],
+            candlesticks=[],
+            prediction=ForecastPrediction(
+                direction="bullish",
+                confidence=0.68,
+                expected_change_percent=0.8,
+                risk_level="medium",
+            ),
+            prediction_generated_at=generated_at,
+            key_factors=[],
+            company_news_ids=[],
+            external_factor_ids=[],
+        )
+
+    assert len(connection.cursor_instance.executions) == 5
+    assert connection.rollbacks == 1
+    assert connection.commits == 0
 
 
 def test_repository_rolls_back_and_reraises_when_statement_fails() -> None:
