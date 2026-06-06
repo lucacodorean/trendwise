@@ -29,6 +29,15 @@ def test_dev_script_runs_alembic_migrations_through_docker() -> None:
     )
 
 
+def test_dev_script_up_uses_standard_compose_startup() -> None:
+    script = (Path(__file__).resolve().parents[2] / "scripts" / "dev").read_text()
+    up_branch = script.split("up)", 1)[1].split("expo)", 1)[0]
+
+    assert "docker compose up --build" in up_branch
+    assert "docker compose run --rm migrate-db" not in up_branch
+    assert "docker compose run --rm seed-db" not in up_branch
+
+
 def test_dev_script_generates_mobile_openapi_client_through_docker() -> None:
     script = (Path(__file__).resolve().parents[2] / "scripts" / "dev").read_text()
 
