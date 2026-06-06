@@ -12,7 +12,7 @@ def create_table_start(migration: str, table_name: str) -> int:
     return match.start()
 
 
-def migration_path() -> Path:
+def initial_migration_path() -> Path:
     return (
         Path(__file__).resolve().parents[2]
         / "migrations"
@@ -21,13 +21,27 @@ def migration_path() -> Path:
     )
 
 
+def forecast_detail_migration_path() -> Path:
+    return (
+        Path(__file__).resolve().parents[2]
+        / "migrations"
+        / "versions"
+        / "0002_forecast_detail_outputs.py"
+    )
+
+
 def test_initial_migration_is_valid_python() -> None:
-    path = migration_path()
+    path = initial_migration_path()
+    compile(path.read_text(), str(path), "exec")
+
+
+def test_forecast_detail_migration_is_valid_python() -> None:
+    path = forecast_detail_migration_path()
     compile(path.read_text(), str(path), "exec")
 
 
 def test_initial_migration_defines_required_persistence_tables() -> None:
-    migration = migration_path().read_text()
+    migration = initial_migration_path().read_text()
 
     for table_name in (
         "stocks",
@@ -53,7 +67,7 @@ def test_initial_migration_defines_required_persistence_tables() -> None:
 
     company_news_source_start = create_table_start(migration, "forecast_source_company_news")
     external_factor_source_start = create_table_start(migration, "forecast_source_external_factors")
-    external_factor_source_end = create_table_start(migration, "forecast_line_points")
+    external_factor_source_end = create_table_start(migration, "job_statuses")
     company_news_source_section = migration[company_news_source_start:external_factor_source_start]
     external_factor_source_section = migration[external_factor_source_start:external_factor_source_end]
     assert "forecast_runs.id" in company_news_source_section
@@ -65,7 +79,7 @@ def test_initial_migration_defines_required_persistence_tables() -> None:
 
 
 def test_initial_migration_defines_seed_upsert_uniqueness_constraints() -> None:
-    migration = migration_path().read_text()
+    migration = initial_migration_path().read_text()
 
     assert re.search(
         r'sa\.UniqueConstraint\(\s*"stock_id",\s*"provider",\s*"observed_at",\s*'
@@ -75,7 +89,7 @@ def test_initial_migration_defines_seed_upsert_uniqueness_constraints() -> None:
 
 
 def test_initial_migration_indexes_latest_prediction_lookup() -> None:
-    migration = migration_path().read_text()
+    migration = initial_migration_path().read_text()
 
     assert '"ix_prediction_runs_stock_horizon_generated"' in migration
     assert re.search(
@@ -90,8 +104,15 @@ def test_initial_migration_indexes_latest_prediction_lookup() -> None:
     )
 
 
-def test_initial_migration_defines_detailed_forecast_and_prediction_tables() -> None:
-    migration = migration_path().read_text()
+def test_forecast_detail_migration_revises_initial_schema() -> None:
+    migration = forecast_detail_migration_path().read_text()
+
+    assert 'revision = "0002_forecast_detail_outputs"' in migration
+    assert 'down_revision = "0001_initial_persistence_schema"' in migration
+
+
+def test_forecast_detail_migration_defines_detailed_forecast_and_prediction_tables() -> None:
+    migration = forecast_detail_migration_path().read_text()
 
     for table_name in (
         "forecast_line_points",
@@ -103,11 +124,11 @@ def test_initial_migration_defines_detailed_forecast_and_prediction_tables() -> 
     line_points_start = create_table_start(migration, "forecast_line_points")
     candlesticks_start = create_table_start(migration, "forecast_candlesticks")
     key_factors_start = create_table_start(migration, "prediction_key_factors")
-    job_statuses_start = create_table_start(migration, "job_statuses")
+    downgrade_start = migration.index("def downgrade()")
 
     line_points_section = migration[line_points_start:candlesticks_start]
     candlesticks_section = migration[candlesticks_start:key_factors_start]
-    key_factors_section = migration[key_factors_start:job_statuses_start]
+    key_factors_section = migration[key_factors_start:downgrade_start]
 
     assert "forecast_runs.id" in line_points_section
     for column_name in ("sequence", "timestamp", "expected_value", "lower_bound", "upper_bound"):
@@ -155,8 +176,8 @@ def test_initial_migration_defines_detailed_forecast_and_prediction_tables() -> 
     )
 
 
-def test_initial_migration_drops_detailed_tables_before_run_tables() -> None:
-    migration = migration_path().read_text()
+def test_forecast_detail_migration_drops_detailed_tables_in_dependency_order() -> None:
+    migration = forecast_detail_migration_path().read_text()
     downgrade_start = migration.index("def downgrade()")
     downgrade_section = migration[downgrade_start:]
 
@@ -168,8 +189,4 @@ def test_initial_migration_drops_detailed_tables_before_run_tables() -> None:
             "forecast_line_points",
         )
     ]
-    prediction_runs_position = downgrade_section.index('"prediction_runs"')
-    forecast_runs_position = downgrade_section.index('"forecast_runs"')
-
-    assert all(position < prediction_runs_position for position in detailed_table_positions)
-    assert all(position < forecast_runs_position for position in detailed_table_positions)
+    assert detailed_table_positions == sorted(detailed_table_positions)
