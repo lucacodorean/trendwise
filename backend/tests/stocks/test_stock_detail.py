@@ -26,6 +26,11 @@ class FakeCursor:
     def fetchone(self) -> Optional[tuple[object, ...]]:
         return self.rows.pop(0)
 
+    def fetchall(self) -> list[tuple[object, ...]]:
+        rows = self.rows.pop(0)
+        assert isinstance(rows, list)
+        return rows
+
 
 class FakeConnection:
     def __init__(self, rows: list[Optional[tuple[object, ...]]]) -> None:
@@ -65,6 +70,25 @@ class FakeStockDetailRepository:
                 "forecast": {
                     "status": "unavailable",
                     "generated_at": datetime(2026, 6, 2, 13, 15, tzinfo=timezone.utc),
+                    "line_points": [
+                        {
+                            "sequence": 1,
+                            "timestamp": datetime(2026, 6, 2, 14, 0, tzinfo=timezone.utc),
+                            "expected_value": 215.1,
+                            "lower_bound": 213.4,
+                            "upper_bound": 216.8,
+                        }
+                    ],
+                    "candlesticks": [
+                        {
+                            "sequence": 1,
+                            "timestamp": datetime(2026, 6, 2, 14, 0, tzinfo=timezone.utc),
+                            "open": 214.35,
+                            "high": 216.2,
+                            "low": 213.9,
+                            "close": 215.1,
+                        }
+                    ],
                 },
                 "prediction": {
                     "direction": "bullish",
@@ -72,6 +96,18 @@ class FakeStockDetailRepository:
                     "expected_change_percent": 0.8,
                     "risk_level": "medium",
                     "generated_at": datetime(2026, 6, 2, 13, 18, tzinfo=timezone.utc),
+                    "key_factors": [
+                        {
+                            "factor_type": "market_snapshot",
+                            "source_reference_type": "market_snapshot",
+                            "source_id": 20,
+                            "label": "Recent price momentum",
+                            "value": 1.24,
+                            "rationale": "Latest snapshot shows positive daily movement.",
+                            "polarity": "positive",
+                            "weight": 0.45,
+                        }
+                    ],
                 },
             },
         }
@@ -113,13 +149,46 @@ def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> 
             (1, "AAPL", "Apple Inc.", "NASDAQ"),
             (Decimal("214.35"), Decimal("2.62"), Decimal("1.24"), observed_at),
             (10, "unavailable", forecast_generated_at),
+            [
+                (
+                    1,
+                    datetime(2026, 6, 2, 14, 0, tzinfo=timezone.utc),
+                    Decimal("215.1"),
+                    Decimal("213.4"),
+                    Decimal("216.8"),
+                )
+            ],
+            [
+                (
+                    1,
+                    datetime(2026, 6, 2, 14, 0, tzinfo=timezone.utc),
+                    Decimal("214.35"),
+                    Decimal("216.2"),
+                    Decimal("213.9"),
+                    Decimal("215.1"),
+                )
+            ],
             (
+                11,
                 "bullish",
                 Decimal("0.68"),
                 Decimal("0.8"),
                 "medium",
                 prediction_generated_at,
             ),
+            [
+                (
+                    1,
+                    "market_snapshot",
+                    "market_snapshot",
+                    20,
+                    "Recent price momentum",
+                    Decimal("1.24"),
+                    "Latest snapshot shows positive daily movement.",
+                    "positive",
+                    Decimal("0.45"),
+                )
+            ],
         ]
     )
 
@@ -140,6 +209,25 @@ def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> 
         "forecast": {
             "status": "unavailable",
             "generated_at": forecast_generated_at,
+            "line_points": [
+                {
+                    "sequence": 1,
+                    "timestamp": datetime(2026, 6, 2, 14, 0, tzinfo=timezone.utc),
+                    "expected_value": 215.1,
+                    "lower_bound": 213.4,
+                    "upper_bound": 216.8,
+                }
+            ],
+            "candlesticks": [
+                {
+                    "sequence": 1,
+                    "timestamp": datetime(2026, 6, 2, 14, 0, tzinfo=timezone.utc),
+                    "open": 214.35,
+                    "high": 216.2,
+                    "low": 213.9,
+                    "close": 215.1,
+                }
+            ],
         },
         "prediction": {
             "direction": "bullish",
@@ -147,6 +235,18 @@ def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> 
             "expected_change_percent": 0.8,
             "risk_level": "medium",
             "generated_at": prediction_generated_at,
+            "key_factors": [
+                {
+                    "factor_type": "market_snapshot",
+                    "source_reference_type": "market_snapshot",
+                    "source_id": 20,
+                    "label": "Recent price momentum",
+                    "value": 1.24,
+                    "rationale": "Latest snapshot shows positive daily movement.",
+                    "polarity": "positive",
+                    "weight": 0.45,
+                }
+            ],
         },
     }
     assert [params for _, params in connection.cursor_instance.executed] == [
@@ -154,13 +254,19 @@ def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> 
         {"stock_id": 1},
         {"stock_id": 1, "horizon": "1d"},
         {"forecast_run_id": 10},
+        {"forecast_run_id": 10},
+        {"forecast_run_id": 10},
+        {"prediction_run_id": 11},
     ]
     sql = "\n".join(query for query, _ in connection.cursor_instance.executed)
     assert "FROM stocks" in sql
     assert "FROM market_snapshots" in sql
     assert "FROM forecast_runs" in sql
+    assert "FROM forecast_line_points" in sql
+    assert "FROM forecast_candlesticks" in sql
     assert "FROM prediction_runs" in sql
-    prediction_query = connection.cursor_instance.executed[3][0]
+    assert "FROM prediction_key_factors" in sql
+    prediction_query = connection.cursor_instance.executed[5][0]
     assert "forecast_run_id = %(forecast_run_id)s" in prediction_query
     assert "stock_market_details" not in sql
     assert "stock_forecast_details" not in sql
@@ -227,6 +333,25 @@ def test_stock_detail_returns_seeded_supported_stock_for_default_horizon() -> No
             "status": "unavailable",
             "generatedAt": "2026-06-02T13:15:00Z",
             "freshnessLabel": "Forecast checked at 2026-06-02T13:15:00Z",
+            "linePoints": [
+                {
+                    "sequence": 1,
+                    "timestamp": "2026-06-02T14:00:00Z",
+                    "expectedValue": 215.1,
+                    "lowerBound": 213.4,
+                    "upperBound": 216.8,
+                }
+            ],
+            "candlesticks": [
+                {
+                    "sequence": 1,
+                    "timestamp": "2026-06-02T14:00:00Z",
+                    "open": 214.35,
+                    "high": 216.2,
+                    "low": 213.9,
+                    "close": 215.1,
+                }
+            ],
         },
         "prediction": {
             "status": "available",
@@ -236,6 +361,18 @@ def test_stock_detail_returns_seeded_supported_stock_for_default_horizon() -> No
             "riskLevel": "medium",
             "generatedAt": "2026-06-02T13:18:00Z",
             "freshnessLabel": "Prediction fresh at 2026-06-02T13:18:00Z",
+            "keyFactors": [
+                {
+                    "factorType": "market_snapshot",
+                    "sourceReferenceType": "market_snapshot",
+                    "sourceId": 20,
+                    "label": "Recent price momentum",
+                    "value": 1.24,
+                    "rationale": "Latest snapshot shows positive daily movement.",
+                    "polarity": "positive",
+                    "weight": 0.45,
+                }
+            ],
         },
         "disclaimer": "Trendwise outputs are informational estimates only. They are not financial advice or trading recommendations.",
     }
@@ -278,7 +415,10 @@ def test_stock_detail_returns_unavailable_sections_for_missing_detail_rows() -> 
         "freshnessLabel": "Market data unavailable",
     }
     assert body["forecast"]["status"] == "unavailable"
+    assert body["forecast"]["linePoints"] == []
+    assert body["forecast"]["candlesticks"] == []
     assert body["prediction"]["status"] == "unavailable"
+    assert body["prediction"]["keyFactors"] == []
 
 
 def test_stock_detail_copy_does_not_use_recommendation_language() -> None:
@@ -286,14 +426,23 @@ def test_stock_detail_copy_does_not_use_recommendation_language() -> None:
 
     body = response.json()
     copy_fields = [
-        body["disclaimer"],
         body["market"]["freshnessLabel"],
         body["forecast"]["freshnessLabel"],
         body["prediction"]["freshnessLabel"],
+        *[
+            factor["label"]
+            for factor in body["prediction"]["keyFactors"]
+        ],
+        *[
+            factor["rationale"]
+            for factor in body["prediction"]["keyFactors"]
+            if factor["rationale"] is not None
+        ],
     ]
     serialized_copy = " ".join(copy_fields).lower()
 
     assert "buy" not in serialized_copy
     assert "sell" not in serialized_copy
     assert "hold" not in serialized_copy
+    assert "recommend" not in serialized_copy
     assert body["prediction"]["direction"] == "bullish"

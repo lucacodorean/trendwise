@@ -35,7 +35,7 @@ def test_run_seeders_runs_each_seeder_in_order_with_same_connection() -> None:
 class RecordingCursor:
     def __init__(self) -> None:
         self.executions: list[tuple[str, object]] = []
-        self.fetchone_results: list[tuple[int, ...] | None] = [(42,), (100,), (200,)]
+        self.fetchone_results: list[tuple[int, ...] | None] = [(42,), (100,), (200,), (300,)]
 
     def execute(self, sql: str, params: object = None) -> None:
         self.executions.append((sql, params))
@@ -101,10 +101,19 @@ def test_stock_detail_seeder_inserts_seed_rows_into_migrated_tables(
         "ticker,horizon,latest_price,daily_change,daily_change_percent,observed_at,"
         "forecast_status,forecast_generated_at,prediction_direction,"
         "prediction_confidence,prediction_expected_change_percent,"
-        "prediction_risk_level,prediction_generated_at\n"
+        "prediction_risk_level,prediction_generated_at,"
+        "forecast_line_points,forecast_candlesticks,prediction_key_factors\n"
         "aapl, 1d ,214.35,2.62,1.24,2026-06-02T13:30:00Z,"
         " unavailable ,2026-06-02T13:15:00Z, bullish ,0.68,0.8,"
-        " medium ,2026-06-02T13:18:00Z\n"
+        " medium ,2026-06-02T13:18:00Z,"
+        '"[{""sequence"":1,""timestamp"":""2026-06-02T16:15:00Z"",'
+        '""expected_value"":215.0,""lower_bound"":210.0,""upper_bound"":220.0}]",'
+        '"[{""sequence"":1,""timestamp"":""2026-06-02T16:15:00Z"",'
+        '""open"":214.35,""high"":220.0,""low"":210.0,""close"":215.0}]",'
+        '"[{""factor_type"":""momentum"",""source_reference_type"":""market_snapshot"",'
+        '""source_id"":null,""label"":""Recent price momentum"",""value"":0.8,'
+        '""rationale"":""Derived from observed prices."",""polarity"":""positive"",'
+        '""weight"":0.45}]"\n'
     )
     connection = RecordingConnection()
 
@@ -115,6 +124,9 @@ def test_stock_detail_seeder_inserts_seed_rows_into_migrated_tables(
     assert any("INSERT INTO market_snapshots" in sql for sql, _ in executions)
     assert any("INSERT INTO forecast_runs" in sql for sql, _ in executions)
     assert any("INSERT INTO prediction_runs" in sql for sql, _ in executions)
+    assert any("INSERT INTO forecast_line_points" in sql for sql, _ in executions)
+    assert any("INSERT INTO forecast_candlesticks" in sql for sql, _ in executions)
+    assert any("INSERT INTO prediction_key_factors" in sql for sql, _ in executions)
 
     market_insert_params = [
         params for sql, params in executions if "INSERT INTO market_snapshots" in sql
@@ -182,6 +194,7 @@ def test_stock_detail_seeder_inserts_seed_rows_into_migrated_tables(
     assert "confidence = EXCLUDED.confidence" in prediction_insert_sql
     assert "expected_change_percent = EXCLUDED.expected_change_percent" in prediction_insert_sql
     assert "risk_level = EXCLUDED.risk_level" in prediction_insert_sql
+    assert "RETURNING id" in prediction_insert_sql
     assert prediction_insert_params == [
         {
             "stock_id": 42,
@@ -194,4 +207,88 @@ def test_stock_detail_seeder_inserts_seed_rows_into_migrated_tables(
             "generated_at": "2026-06-02T13:18:00Z",
         }
     ]
+
+    line_point_insert_params = [
+        params for sql, params in executions if "INSERT INTO forecast_line_points" in sql
+    ]
+    line_point_insert_sql = [
+        sql for sql, _ in executions if "INSERT INTO forecast_line_points" in sql
+    ][0]
+    assert "ON CONFLICT (forecast_run_id, sequence) DO UPDATE SET" in line_point_insert_sql
+    assert line_point_insert_params == [
+        {
+            "forecast_run_id": 200,
+            "sequence": 1,
+            "timestamp": "2026-06-02T16:15:00Z",
+            "expected_value": 215.0,
+            "lower_bound": 210.0,
+            "upper_bound": 220.0,
+        }
+    ]
+
+    candlestick_insert_params = [
+        params for sql, params in executions if "INSERT INTO forecast_candlesticks" in sql
+    ]
+    candlestick_insert_sql = [
+        sql for sql, _ in executions if "INSERT INTO forecast_candlesticks" in sql
+    ][0]
+    assert "ON CONFLICT (forecast_run_id, sequence) DO UPDATE SET" in candlestick_insert_sql
+    assert candlestick_insert_params == [
+        {
+            "forecast_run_id": 200,
+            "sequence": 1,
+            "timestamp": "2026-06-02T16:15:00Z",
+            "open_price": 214.35,
+            "high_price": 220.0,
+            "low_price": 210.0,
+            "close_price": 215.0,
+        }
+    ]
+
+    key_factor_insert_params = [
+        params for sql, params in executions if "INSERT INTO prediction_key_factors" in sql
+    ]
+    key_factor_insert_sql = [
+        sql for sql, _ in executions if "INSERT INTO prediction_key_factors" in sql
+    ][0]
+    assert "ON CONFLICT (prediction_run_id, sequence) DO UPDATE SET" in key_factor_insert_sql
+    assert key_factor_insert_params == [
+        {
+            "prediction_run_id": 300,
+            "sequence": 1,
+            "factor_type": "momentum",
+            "source_reference_type": "market_snapshot",
+            "source_id": None,
+            "label": "Recent price momentum",
+            "numeric_value": 0.8,
+            "rationale": "Derived from observed prices.",
+            "polarity": "positive",
+            "weight": 0.45,
+        }
+    ]
+    assert connection.commits == 1
+
+
+def test_stock_detail_seeder_accepts_seed_rows_without_detail_columns(
+    tmp_path: Path,
+) -> None:
+    seed_file = tmp_path / "stock_detail.csv"
+    seed_file.write_text(
+        "ticker,horizon,latest_price,daily_change,daily_change_percent,observed_at,"
+        "forecast_status,forecast_generated_at,prediction_direction,"
+        "prediction_confidence,prediction_expected_change_percent,"
+        "prediction_risk_level,prediction_generated_at\n"
+        "aapl,1d,214.35,2.62,1.24,2026-06-02T13:30:00Z,"
+        "unavailable,2026-06-02T13:15:00Z,bullish,0.68,0.8,"
+        "medium,2026-06-02T13:18:00Z\n"
+    )
+    connection = RecordingConnection()
+
+    StockDetailSeeder(seed_file=seed_file).run(connection)
+
+    executions = connection.cursor_instance.executions
+    assert any("INSERT INTO prediction_runs" in sql for sql, _ in executions)
+    assert all("INSERT INTO forecast_line_points" not in sql for sql, _ in executions)
+    assert all("INSERT INTO forecast_candlesticks" not in sql for sql, _ in executions)
+    assert all("INSERT INTO prediction_key_factors" not in sql for sql, _ in executions)
     assert connection.commits == 1
