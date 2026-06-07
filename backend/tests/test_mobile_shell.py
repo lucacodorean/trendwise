@@ -200,3 +200,4 @@ def test_mobile_stock_detail_exposes_forecast_horizon_selector() -> None:
     assert "onChangeHorizon" in detail_source
     assert "Forecast horizon" in detail_source
     assert "accessibilityLabel={`Select ${option.label} Forecast Horizon`}" in detail_source
+    assert "accessibilityState={{ selected: isSelected }}" in detail_source

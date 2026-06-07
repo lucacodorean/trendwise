@@ -77,6 +77,7 @@ export function StockDetailScreen({
                 <Pressable
                   accessibilityLabel={`Select ${option.label} Forecast Horizon`}
                   accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
                   key={option.value}
                   onPress={() => onChangeHorizon(option.value)}
                   style={[styles.horizonChip, isSelected ? styles.horizonChipSelected : null]}
