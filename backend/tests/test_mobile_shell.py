@@ -30,3 +30,39 @@ def test_mobile_api_derives_backend_url_from_expo_dev_server_when_env_is_missing
     assert "NativeModules.SourceCode?.scriptURL" in stocks_api
     assert "http://${host}:8000" in stocks_api
     assert '?? "http://localhost:8000"' not in stocks_api
+
+
+def test_mobile_declares_forecast_horizon_preference_storage() -> None:
+    storage_path = (
+        Path(__file__).resolve().parents[2]
+        / "mobile"
+        / "src"
+        / "storage"
+        / "forecastHorizon.ts"
+    )
+
+    source = storage_path.read_text()
+
+    assert 'const FORECAST_HORIZON_KEY = "trendwise.forecastHorizon"' in source
+    assert 'export const DEFAULT_FORECAST_HORIZON: ForecastHorizon = "1d"' in source
+    assert '"30m", "1d", "5d", "7d", "1mo", "6mo", "1y"' in source
+    assert "FORECAST_HORIZON_LABELS" in source
+    assert '"1mo": "1 month"' in source
+    assert "loadForecastHorizon" in source
+    assert "saveForecastHorizon" in source
+
+
+def test_mobile_forecast_horizon_storage_rejects_ambiguous_values() -> None:
+    source = (
+        Path(__file__).resolve().parents[2]
+        / "mobile"
+        / "src"
+        / "storage"
+        / "forecastHorizon.ts"
+    ).read_text()
+
+    assert 'return DEFAULT_FORECAST_HORIZON' in source
+    assert 'value is ForecastHorizon' in source
+    assert '"1M"' not in source
+    assert '"30M"' not in source
+    assert '"2d"' not in source
