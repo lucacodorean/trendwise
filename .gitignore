@@ -7,5 +7,6 @@ node_modules/
 .expo/
 .superpowers/
 .worktrees/
+.test-build/
 dist/
 build/

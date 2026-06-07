@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text } from "re
 import { StatusBar } from "expo-status-bar";
 
 import { getStockDetail, type ForecastHorizon, type PrimaryStock, type StockDetail } from "./src/api/stocks";
+import { getDetailLoadingState, type AppState } from "./src/appState";
 import { StockDetailScreen } from "./src/screens/StockDetailScreen";
 import { StockSearchScreen } from "./src/screens/StockSearchScreen";
 import {
@@ -17,13 +18,6 @@ import {
   loadPrimaryStock,
   savePrimaryStock,
 } from "./src/storage/primaryStock";
-
-type AppState =
-  | { status: "loading" }
-  | { status: "search" }
-  | { status: "detail-loading"; stock: PrimaryStock }
-  | { status: "detail-error"; stock: PrimaryStock }
-  | { status: "detail"; stock: PrimaryStock; detail: StockDetail };
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>({ status: "loading" });
@@ -74,7 +68,7 @@ export default function App() {
     const requestId = detailRequestId.current + 1;
     detailRequestId.current = requestId;
 
-    setAppState({ status: "detail-loading", stock });
+    setAppState(getDetailLoadingState(stock, fallbackDetail));
 
     try {
       const detail = await getStockDetail(stock.ticker, horizon);
