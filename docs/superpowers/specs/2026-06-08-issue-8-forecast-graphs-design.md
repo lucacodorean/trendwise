@@ -120,7 +120,7 @@ Scale and labels:
 
 ## Error Handling
 
-If `forecast.status` is unavailable or forecast arrays are empty, show a graph-card empty state that says Forecast Graph data is unavailable for the selected horizon.
+If the selected graph type has no forecast array data, show a graph-card empty state that says Forecast Graph data is unavailable for the selected horizon. Do not use the legacy `forecast.status` string alone to hide graph data when forecast arrays are present.
 
 If historical context is missing but forecast data exists, render the forecast segment and explicitly label historical context as unavailable. Do not fabricate historical points from forecast values.
 
