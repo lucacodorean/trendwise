@@ -27,8 +27,15 @@ class StockForecastDetailRow(TypedDict):
     id: int
     status: str
     generated_at: datetime
+    historical_points: list["StockForecastHistoricalPointRow"]
     line_points: list["StockForecastLinePointRow"]
     candlesticks: list["StockForecastCandlestickRow"]
+
+
+class StockForecastHistoricalPointRow(TypedDict):
+    sequence: int
+    timestamp: datetime
+    value: float
 
 
 class StockForecastLinePointRow(TypedDict):
@@ -199,9 +206,39 @@ class PostgresStockDetailRepository:
             )
             forecast = cursor.fetchone()
 
+            historical_points: list[StockForecastHistoricalPointRow] = []
             line_points: list[StockForecastLinePointRow] = []
             candlesticks: list[StockForecastCandlestickRow] = []
             if forecast is not None:
+                cursor.execute(
+                    """
+                    SELECT sequence, observed_at, latest_price
+                    FROM (
+                        SELECT
+                            ROW_NUMBER() OVER (ORDER BY observed_at ASC, id ASC) AS sequence,
+                            observed_at,
+                            latest_price
+                        FROM (
+                            SELECT id, observed_at, latest_price
+                            FROM market_snapshots
+                            WHERE stock_id = %(stock_id)s
+                            ORDER BY observed_at DESC, id DESC
+                            LIMIT 8
+                        ) recent_market_snapshots
+                    ) ordered_market_snapshots
+                    ORDER BY sequence ASC
+                    """,
+                    {"stock_id": stock_id},
+                )
+                historical_points = [
+                    {
+                        "sequence": row[0],
+                        "timestamp": row[1],
+                        "value": numeric_to_float(row[2]),
+                    }
+                    for row in cursor.fetchall()
+                ]
+
                 cursor.execute(
                     """
                     SELECT sequence, timestamp, expected_value, lower_bound, upper_bound
@@ -321,6 +358,7 @@ class PostgresStockDetailRepository:
             else {
                 "status": forecast[1],
                 "generated_at": forecast[2],
+                "historical_points": historical_points,
                 "line_points": line_points,
                 "candlesticks": candlesticks,
             },

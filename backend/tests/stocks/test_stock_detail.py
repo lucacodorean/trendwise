@@ -70,6 +70,18 @@ class FakeStockDetailRepository:
                 "forecast": {
                     "status": "unavailable",
                     "generated_at": datetime(2026, 6, 2, 13, 15, tzinfo=timezone.utc),
+                    "historical_points": [
+                        {
+                            "sequence": 1,
+                            "timestamp": datetime(2026, 6, 2, 12, 30, tzinfo=timezone.utc),
+                            "value": 211.7,
+                        },
+                        {
+                            "sequence": 2,
+                            "timestamp": datetime(2026, 6, 2, 13, 30, tzinfo=timezone.utc),
+                            "value": 214.35,
+                        },
+                    ],
                     "line_points": [
                         {
                             "sequence": 1,
@@ -152,6 +164,18 @@ def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> 
             [
                 (
                     1,
+                    datetime(2026, 6, 2, 12, 30, tzinfo=timezone.utc),
+                    Decimal("211.7"),
+                ),
+                (
+                    2,
+                    datetime(2026, 6, 2, 13, 30, tzinfo=timezone.utc),
+                    Decimal("214.35"),
+                ),
+            ],
+            [
+                (
+                    1,
                     datetime(2026, 6, 2, 14, 0, tzinfo=timezone.utc),
                     Decimal("215.1"),
                     Decimal("213.4"),
@@ -209,6 +233,18 @@ def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> 
         "forecast": {
             "status": "unavailable",
             "generated_at": forecast_generated_at,
+            "historical_points": [
+                {
+                    "sequence": 1,
+                    "timestamp": datetime(2026, 6, 2, 12, 30, tzinfo=timezone.utc),
+                    "value": 211.7,
+                },
+                {
+                    "sequence": 2,
+                    "timestamp": datetime(2026, 6, 2, 13, 30, tzinfo=timezone.utc),
+                    "value": 214.35,
+                },
+            ],
             "line_points": [
                 {
                     "sequence": 1,
@@ -253,6 +289,7 @@ def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> 
         {"ticker": "AAPL"},
         {"stock_id": 1},
         {"stock_id": 1, "horizon": "1d"},
+        {"stock_id": 1},
         {"forecast_run_id": 10},
         {"forecast_run_id": 10},
         {"forecast_run_id": 10},
@@ -262,11 +299,12 @@ def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> 
     assert "FROM stocks" in sql
     assert "FROM market_snapshots" in sql
     assert "FROM forecast_runs" in sql
+    assert "ROW_NUMBER() OVER (ORDER BY observed_at ASC, id ASC)" in sql
     assert "FROM forecast_line_points" in sql
     assert "FROM forecast_candlesticks" in sql
     assert "FROM prediction_runs" in sql
     assert "FROM prediction_key_factors" in sql
-    prediction_query = connection.cursor_instance.executed[5][0]
+    prediction_query = connection.cursor_instance.executed[6][0]
     assert "forecast_run_id = %(forecast_run_id)s" in prediction_query
     assert "stock_market_details" not in sql
     assert "stock_forecast_details" not in sql
@@ -343,6 +381,18 @@ def test_stock_detail_returns_seeded_supported_stock_for_default_horizon() -> No
             "status": "unavailable",
             "generatedAt": "2026-06-02T13:15:00Z",
             "freshnessLabel": "Forecast checked at 2026-06-02T13:15:00Z",
+            "historicalPoints": [
+                {
+                    "sequence": 1,
+                    "timestamp": "2026-06-02T12:30:00Z",
+                    "value": 211.7,
+                },
+                {
+                    "sequence": 2,
+                    "timestamp": "2026-06-02T13:30:00Z",
+                    "value": 214.35,
+                },
+            ],
             "linePoints": [
                 {
                     "sequence": 1,
@@ -453,6 +503,7 @@ def test_stock_detail_returns_unavailable_sections_for_missing_detail_rows() -> 
         "freshnessLabel": "Market data unavailable",
     }
     assert body["forecast"]["status"] == "unavailable"
+    assert body["forecast"]["historicalPoints"] == []
     assert body["forecast"]["linePoints"] == []
     assert body["forecast"]["candlesticks"] == []
     assert body["prediction"]["status"] == "unavailable"
