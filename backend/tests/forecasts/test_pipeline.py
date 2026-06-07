@@ -3,7 +3,7 @@ from inspect import signature
 from typing import Any
 
 from app.forecasts.models import ExternalFactorSignal, ForecastHorizon
-from app.forecasts.pipeline import generate_and_store_baseline_forecast
+from app.forecasts.pipeline import build_forecast_input, generate_and_store_baseline_forecast
 from app.providers.interfaces import CompanyNewsItem, MarketDataResult, PricePoint, SupportedStock
 
 
@@ -80,3 +80,56 @@ def test_generate_and_store_baseline_forecast_persists_provider_observed_data() 
     assert call["key_factors"]
     assert call["company_news_ids"] == []
     assert call["external_factor_ids"] == [401]
+
+
+def test_build_forecast_input_applies_horizon_news_window() -> None:
+    observed_at = datetime(2026, 6, 6, 14, 30, tzinfo=timezone.utc)
+    stock = SupportedStock(ticker="aapl", company_name="Apple Inc.", exchange="NASDAQ")
+    market_data = MarketDataResult(
+        stock=stock,
+        provider="yahoo",
+        latest_price=214.35,
+        previous_close=211.73,
+        market_status="open",
+        observed_at=observed_at,
+        historical_prices=[
+            PricePoint(timestamp=observed_at - timedelta(days=3), open=None, high=None, low=None, close=210.00, volume=None),
+            PricePoint(timestamp=observed_at, open=None, high=None, low=None, close=214.35, volume=None),
+        ],
+    )
+    recent_news = CompanyNewsItem(
+        stock=stock,
+        provider="yahoo",
+        title="Recent Apple news",
+        url="https://example.com/recent",
+        publisher="Example News",
+        published_at=observed_at - timedelta(hours=12),
+        provider_id="recent",
+    )
+    older_news = CompanyNewsItem(
+        stock=stock,
+        provider="yahoo",
+        title="Older Apple news",
+        url="https://example.com/older",
+        publisher="Example News",
+        published_at=observed_at - timedelta(days=2),
+        provider_id="older",
+    )
+
+    thirty_minute_input = build_forecast_input(
+        stock=stock,
+        horizon=ForecastHorizon.thirty_minutes,
+        market_data=market_data,
+        news_items=[recent_news, older_news],
+        external_factors=[],
+    )
+    one_month_input = build_forecast_input(
+        stock=stock,
+        horizon=ForecastHorizon.one_month,
+        market_data=market_data,
+        news_items=[recent_news, older_news],
+        external_factors=[],
+    )
+
+    assert [item.title for item in thirty_minute_input.company_news] == ["Recent Apple news"]
+    assert [item.title for item in one_month_input.company_news] == ["Recent Apple news", "Older Apple news"]

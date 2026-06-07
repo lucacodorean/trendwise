@@ -2,6 +2,7 @@ from datetime import date, datetime, time, timedelta
 from math import isfinite, sqrt
 from statistics import fmean, pstdev
 from typing import Optional, Union
+from zoneinfo import ZoneInfo
 
 from app.forecasts.models import (
     ForecastCandlestick,
@@ -44,9 +45,19 @@ VOLATILITY_SCALE: dict[ForecastHorizon, float] = {
     ForecastHorizon.one_year: 5.0,
 }
 
-REGULAR_MARKET_OPEN = time(hour=13, minute=30)
-REGULAR_MARKET_CLOSE = time(hour=20, minute=0)
+MARKET_TIME_ZONE = ZoneInfo("America/New_York")
+LOCAL_REGULAR_MARKET_OPEN = time(hour=9, minute=30)
+LOCAL_REGULAR_MARKET_CLOSE = time(hour=16, minute=0)
 INTRADAY_HORIZONS = {ForecastHorizon.thirty_minutes, ForecastHorizon.one_day}
+EXTERNAL_FACTOR_WEIGHT_SCALE: dict[ForecastHorizon, float] = {
+    ForecastHorizon.thirty_minutes: 1.25,
+    ForecastHorizon.one_day: 1.15,
+    ForecastHorizon.five_days: 1.0,
+    ForecastHorizon.seven_days: 0.95,
+    ForecastHorizon.one_month: 0.85,
+    ForecastHorizon.six_months: 0.7,
+    ForecastHorizon.one_year: 0.6,
+}
 
 
 class ForecastInputError(ValueError):
@@ -97,40 +108,52 @@ def close_to_close_returns(forecast_input: ForecastInput) -> list[float]:
 
 
 def market_open_at(value: datetime) -> datetime:
-    return value.replace(
-        hour=REGULAR_MARKET_OPEN.hour,
-        minute=REGULAR_MARKET_OPEN.minute,
+    local_value = value.astimezone(MARKET_TIME_ZONE)
+    local_open = local_value.replace(
+        hour=LOCAL_REGULAR_MARKET_OPEN.hour,
+        minute=LOCAL_REGULAR_MARKET_OPEN.minute,
         second=0,
         microsecond=0,
     )
+    return local_open.astimezone(value.tzinfo)
 
 
 def market_close_at(value: datetime) -> datetime:
-    return value.replace(
-        hour=REGULAR_MARKET_CLOSE.hour,
-        minute=REGULAR_MARKET_CLOSE.minute,
+    local_value = value.astimezone(MARKET_TIME_ZONE)
+    local_close = local_value.replace(
+        hour=LOCAL_REGULAR_MARKET_CLOSE.hour,
+        minute=LOCAL_REGULAR_MARKET_CLOSE.minute,
         second=0,
         microsecond=0,
     )
+    return local_close.astimezone(value.tzinfo)
+
+
+def market_open_on(local_date: date, tzinfo) -> datetime:
+    return datetime.combine(local_date, LOCAL_REGULAR_MARKET_OPEN, tzinfo=MARKET_TIME_ZONE).astimezone(tzinfo)
 
 
 def next_trading_day_open(value: datetime) -> datetime:
-    candidate = market_open_at(value + timedelta(days=1))
-    while not is_trading_session(candidate.date()):
-        candidate = market_open_at(candidate + timedelta(days=1))
-    return candidate
+    candidate_date = value.astimezone(MARKET_TIME_ZONE).date() + timedelta(days=1)
+    while not is_trading_session(candidate_date):
+        candidate_date += timedelta(days=1)
+    return market_open_on(candidate_date, value.tzinfo)
 
 
 def normalize_to_trading_session(value: datetime) -> datetime:
-    candidate = value
-    while not is_trading_session(candidate.date()):
-        candidate = market_open_at(candidate + timedelta(days=1))
+    local_candidate = value.astimezone(MARKET_TIME_ZONE)
+    while not is_trading_session(local_candidate.date()):
+        local_candidate = datetime.combine(
+            local_candidate.date() + timedelta(days=1),
+            LOCAL_REGULAR_MARKET_OPEN,
+            tzinfo=MARKET_TIME_ZONE,
+        )
 
-    if candidate.time() < REGULAR_MARKET_OPEN:
-        return market_open_at(candidate)
-    if candidate.time() > REGULAR_MARKET_CLOSE:
-        return next_trading_day_open(candidate)
-    return candidate
+    if local_candidate.time() < LOCAL_REGULAR_MARKET_OPEN:
+        return market_open_on(local_candidate.date(), value.tzinfo)
+    if local_candidate.time() > LOCAL_REGULAR_MARKET_CLOSE:
+        return next_trading_day_open(local_candidate.astimezone(value.tzinfo))
+    return local_candidate.astimezone(value.tzinfo)
 
 
 def add_regular_market_time(value: datetime, interval: timedelta) -> datetime:
@@ -147,7 +170,8 @@ def add_regular_market_time(value: datetime, interval: timedelta) -> datetime:
 
 
 def add_trading_session_interval(value: datetime, interval: timedelta) -> datetime:
-    return normalize_to_trading_session(value + interval)
+    local_target = value.astimezone(MARKET_TIME_ZONE) + interval
+    return normalize_to_trading_session(local_target.astimezone(value.tzinfo))
 
 
 def observed_fixed_holiday(year: int, month: int, day: int) -> date:
@@ -315,7 +339,7 @@ def derive_prediction(forecast_input: ForecastInput, line_points: list[ForecastL
     )
 
 
-def derive_key_factors(forecast_input: ForecastInput, signal: float, volatility: float, neutral_fallback: bool) -> list[KeyFactorInput]:
+def derive_key_factors(forecast_input: ForecastInput, horizon: ForecastHorizon, signal: float, volatility: float, neutral_fallback: bool) -> list[KeyFactorInput]:
     freshness_minutes = 0.0
     observed_at = forecast_input.market_snapshot.observed_at
     latest_history = max((point.timestamp for point in forecast_input.historical_prices), default=observed_at)
@@ -377,7 +401,7 @@ def derive_key_factors(forecast_input: ForecastInput, signal: float, volatility:
             value=float(len(forecast_input.external_factors)),
             rationale="External factor count is reported as context only; no directional effect is inferred.",
             polarity="neutral",
-            weight=0.1,
+            weight=round(0.1 * EXTERNAL_FACTOR_WEIGHT_SCALE[horizon], 4),
         ),
     ]
 
@@ -389,7 +413,7 @@ def generate_baseline_forecast(forecast_input: ForecastInput, *, now: Optional[d
     line_points = generate_line_points(forecast_input, horizon, signal, volatility, neutral_fallback)
     candlesticks = derive_candlesticks(forecast_input, line_points)
     prediction = derive_prediction(forecast_input, line_points, volatility, neutral_fallback)
-    key_factors = derive_key_factors(forecast_input, signal, volatility, neutral_fallback)
+    key_factors = derive_key_factors(forecast_input, horizon, signal, volatility, neutral_fallback)
 
     return ForecastGenerationResult(
         stock=forecast_input.stock,

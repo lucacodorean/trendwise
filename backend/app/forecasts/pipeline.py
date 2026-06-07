@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Protocol
 
 from app.forecasts.baseline import generate_baseline_forecast
+from app.forecasts.horizons import get_horizon_metadata
 from app.forecasts.models import (
     CompanyNewsSignal,
     ExternalFactorSignal,
@@ -55,6 +56,10 @@ def build_forecast_input(
     news_items: list[CompanyNewsItem],
     external_factors: list[ExternalFactorSignal],
 ) -> ForecastInput:
+    horizon_metadata = get_horizon_metadata(horizon)
+    news_window_start = market_data.observed_at - timedelta(days=horizon_metadata.news_window_days)
+    windowed_news = [item for item in news_items if item.published_at >= news_window_start]
+
     return ForecastInput(
         stock=StockIdentity(ticker=stock.ticker, company_name=stock.company_name, exchange=stock.exchange),
         horizon=horizon,
@@ -65,7 +70,7 @@ def build_forecast_input(
             observed_at=market_data.observed_at,
         ),
         historical_prices=[HistoricalPricePoint(timestamp=point.timestamp, close=point.close) for point in market_data.historical_prices],
-        company_news=[CompanyNewsSignal(source_id=None, title=item.title, published_at=item.published_at) for item in news_items],
+        company_news=[CompanyNewsSignal(source_id=None, title=item.title, published_at=item.published_at) for item in windowed_news],
         external_factors=external_factors,
     )
 
