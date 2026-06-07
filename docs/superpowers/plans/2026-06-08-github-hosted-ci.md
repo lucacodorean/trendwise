@@ -4,7 +4,7 @@
 
 **Goal:** Add a small GitHub Actions CI workflow that runs backend Python tests and mobile TypeScript checks on GitHub-hosted runners.
 
-**Architecture:** `.github/workflows/ci.yml` orchestrates CI jobs. Each job delegates its setup and command sequence to a focused local composite action under `.github/actions/` so backend and mobile checks can evolve independently. Backend dev dependencies include the real `httpx` package required by FastAPI/Starlette `TestClient` in a clean CI environment.
+**Architecture:** `.github/workflows/ci.yml` orchestrates CI jobs. Each job delegates its setup and command sequence to a focused local composite action under `.github/actions/` so backend and mobile checks can evolve independently. Backend dev dependencies include the real `httpx` package required by FastAPI/Starlette `TestClient` in a clean CI environment. The backend job also installs mobile dependencies because the current backend pytest suite includes a mobile TypeScript behavior test that shells out to `mobile/node_modules/.bin/tsc`.
 
 **Tech Stack:** GitHub Actions, `actions/setup-python@v5`, `actions/setup-node@v4`, Python 3.11, Node 22, pytest, httpx, npm, TypeScript.
 
@@ -76,10 +76,21 @@ runs:
       with:
         python-version: "3.11"
 
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: mobile/package-lock.json
+
     - name: Install backend dependencies
       shell: bash
       working-directory: backend
       run: python -m pip install ".[dev]"
+
+    - name: Install mobile dependencies for backend tests
+      shell: bash
+      working-directory: mobile
+      run: npm ci
 
     - name: Run backend tests
       shell: bash
@@ -160,6 +171,6 @@ Expected: only CI workflow/action files and this plan are changed.
 
 ## Self-Review
 
-- Spec coverage: The plan covers GitHub-hosted backend tests and mobile typecheck, with `ci.yml` connecting separate files. It also covers the backend dev dependency needed for FastAPI/Starlette `TestClient` in clean CI environments.
+- Spec coverage: The plan covers GitHub-hosted backend tests and mobile typecheck, with `ci.yml` connecting separate files. It also covers the backend dev dependency needed for FastAPI/Starlette `TestClient` in clean CI environments and the mobile dependency install needed by backend pytest's TypeScript behavior test.
 - Placeholder scan: No placeholders remain.
 - Type consistency: File paths and local action names match between `ci.yml` and action directories.
