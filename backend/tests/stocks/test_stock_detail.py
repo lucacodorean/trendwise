@@ -321,6 +321,16 @@ def test_stock_detail_returns_seeded_supported_stock_for_default_horizon() -> No
             "exchange": "NASDAQ",
         },
         "horizon": "1d",
+        "horizonMetadata": {
+            "value": "1d",
+            "label": "1 day",
+            "timeBasis": "regular_market",
+            "pricePointBasis": "trading_session",
+            "calendarBasis": "regular_market_trading_time",
+            "newsWindowDays": 3,
+            "externalFactorWeightScale": 1.15,
+            "expectedForecastPointCount": 8,
+        },
         "market": {
             "status": "available",
             "latestPrice": 214.35,
@@ -383,6 +393,34 @@ def test_stock_detail_accepts_explicit_valid_horizon() -> None:
 
     assert response.status_code == 200
     assert response.json()["horizon"] == "5d"
+
+
+def test_stock_detail_returns_metadata_for_explicit_horizon() -> None:
+    response = client().get("/stocks/AAPL/detail", params={"horizon": "1mo"})
+
+    assert response.status_code == 200
+    assert response.json()["horizon"] == "1mo"
+    assert response.json()["horizonMetadata"] == {
+        "value": "1mo",
+        "label": "1 month",
+        "timeBasis": "calendar_period",
+        "pricePointBasis": "trading_session",
+        "calendarBasis": "calendar_period",
+        "newsWindowDays": 30,
+        "externalFactorWeightScale": 0.85,
+        "expectedForecastPointCount": 10,
+    }
+
+
+def test_stock_detail_rejects_ambiguous_horizon_values_before_repository_lookup() -> None:
+    repository = FakeStockDetailRepository()
+
+    for horizon in ("1M", "30M", "2d"):
+        response = client(repository).get("/stocks/AAPL/detail", params={"horizon": horizon})
+
+        assert response.status_code == 422
+
+    assert repository.calls == []
 
 
 def test_stock_detail_rejects_invalid_horizon_before_repository_lookup() -> None:

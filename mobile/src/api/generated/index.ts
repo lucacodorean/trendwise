@@ -12,6 +12,7 @@ export type { HTTPValidationError } from './models/HTTPValidationError';
 export type { StockDetailForecast } from './models/StockDetailForecast';
 export type { StockDetailForecastCandlestick } from './models/StockDetailForecastCandlestick';
 export type { StockDetailForecastLinePoint } from './models/StockDetailForecastLinePoint';
+export type { StockDetailHorizonMetadata } from './models/StockDetailHorizonMetadata';
 export type { StockDetailKeyFactor } from './models/StockDetailKeyFactor';
 export type { StockDetailMarket } from './models/StockDetailMarket';
 export type { StockDetailPrediction } from './models/StockDetailPrediction';
