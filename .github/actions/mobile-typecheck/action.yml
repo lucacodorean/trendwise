@@ -1,0 +1,21 @@
+name: Mobile Typecheck
+description: Set up Node and run mobile TypeScript checks
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: mobile/package-lock.json
+
+    - name: Install mobile dependencies
+      shell: bash
+      working-directory: mobile
+      run: npm ci
+
+    - name: Run mobile typecheck
+      shell: bash
+      working-directory: mobile
+      run: npm run typecheck
