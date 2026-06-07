@@ -126,7 +126,14 @@ export default function App() {
       return;
     }
 
+    const currentState = appState;
     setSelectedHorizon(horizon);
+
+    if (currentState.status === "detail") {
+      loadDetailForStock(currentState.stock, horizon, currentState.detail);
+    } else if (currentState.status === "detail-error" || currentState.status === "detail-loading") {
+      loadDetailForStock(currentState.stock, horizon);
+    }
 
     try {
       const savePromise = saveForecastHorizonQueue.current.then(() => saveForecastHorizon(horizon));
@@ -134,12 +141,6 @@ export default function App() {
       await savePromise;
     } catch {
       setDetailError("Could not save your selected Forecast Horizon. Try again.");
-    }
-
-    if (appState.status === "detail") {
-      loadDetailForStock(appState.stock, horizon, appState.detail);
-    } else if (appState.status === "detail-error" || appState.status === "detail-loading") {
-      loadDetailForStock(appState.stock, horizon);
     }
   }
 

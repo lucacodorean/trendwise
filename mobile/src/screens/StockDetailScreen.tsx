@@ -264,8 +264,12 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   horizonChip: {
+    alignItems: "center",
     backgroundColor: "#e2e8f0",
     borderRadius: 999,
+    justifyContent: "center",
+    minHeight: 44,
+    minWidth: 44,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },

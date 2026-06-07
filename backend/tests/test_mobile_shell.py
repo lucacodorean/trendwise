@@ -191,7 +191,21 @@ def test_mobile_app_keeps_current_detail_visible_when_horizon_reload_fails() -> 
 
     assert "fallbackDetail?: StockDetail" in app_source
     assert 'setAppState({ status: "detail", stock, detail: fallbackDetail })' in app_source
-    assert "loadDetailForStock(appState.stock, horizon, appState.detail)" in app_source
+    assert "loadDetailForStock(currentState.stock, horizon, currentState.detail)" in app_source
+
+
+def test_mobile_app_reloads_horizon_from_captured_state_before_async_save() -> None:
+    app_source = (Path(__file__).resolve().parents[2] / "mobile" / "App.tsx").read_text()
+    handle_source = app_source.split("async function handleChangeHorizon", 1)[1].split(
+        "async function handleChangeStock", 1
+    )[0]
+
+    capture_index = handle_source.index("const currentState = appState;")
+    reload_index = handle_source.index("loadDetailForStock(currentState.stock, horizon")
+    save_index = handle_source.index("await savePromise;")
+
+    assert capture_index < reload_index < save_index
+    assert "loadDetailForStock(appState.stock, horizon" not in handle_source
 
 
 def test_mobile_stock_detail_exposes_forecast_horizon_selector() -> None:
@@ -209,3 +223,7 @@ def test_mobile_stock_detail_exposes_forecast_horizon_selector() -> None:
     assert "Forecast horizon" in detail_source
     assert "accessibilityLabel={`Select ${option.label} Forecast Horizon`}" in detail_source
     assert "accessibilityState={{ selected: isSelected }}" in detail_source
+    assert "minHeight: 44" in detail_source
+    assert "minWidth: 44" in detail_source
+    assert 'alignItems: "center"' in detail_source
+    assert 'justifyContent: "center"' in detail_source
