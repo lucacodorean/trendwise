@@ -66,7 +66,11 @@ export default function App() {
     };
   }, []);
 
-  async function loadDetailForStock(stock: PrimaryStock, horizon: ForecastHorizon = selectedHorizon) {
+  async function loadDetailForStock(
+    stock: PrimaryStock,
+    horizon: ForecastHorizon = selectedHorizon,
+    fallbackDetail?: StockDetail,
+  ) {
     const requestId = detailRequestId.current + 1;
     detailRequestId.current = requestId;
 
@@ -81,7 +85,11 @@ export default function App() {
     } catch {
       if (detailRequestId.current === requestId) {
         setDetailError("Could not load Stock details. Try again.");
-        setAppState({ status: "detail-error", stock });
+        if (fallbackDetail) {
+          setAppState({ status: "detail", stock, detail: fallbackDetail });
+        } else {
+          setAppState({ status: "detail-error", stock });
+        }
       }
     }
   }
@@ -128,7 +136,9 @@ export default function App() {
       setDetailError("Could not save your selected Forecast Horizon. Try again.");
     }
 
-    if (appState.status === "detail" || appState.status === "detail-error" || appState.status === "detail-loading") {
+    if (appState.status === "detail") {
+      loadDetailForStock(appState.stock, horizon, appState.detail);
+    } else if (appState.status === "detail-error" || appState.status === "detail-loading") {
       loadDetailForStock(appState.stock, horizon);
     }
   }

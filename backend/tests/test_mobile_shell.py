@@ -186,6 +186,14 @@ def test_mobile_app_loads_and_saves_selected_forecast_horizon() -> None:
     assert 'getStockDetail(stock.ticker, "1d")' not in app_source
 
 
+def test_mobile_app_keeps_current_detail_visible_when_horizon_reload_fails() -> None:
+    app_source = (Path(__file__).resolve().parents[2] / "mobile" / "App.tsx").read_text()
+
+    assert "fallbackDetail?: StockDetail" in app_source
+    assert 'setAppState({ status: "detail", stock, detail: fallbackDetail })' in app_source
+    assert "loadDetailForStock(appState.stock, horizon, appState.detail)" in app_source
+
+
 def test_mobile_stock_detail_exposes_forecast_horizon_selector() -> None:
     detail_source = (
         Path(__file__).resolve().parents[2]
