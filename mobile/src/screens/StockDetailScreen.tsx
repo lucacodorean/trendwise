@@ -1,19 +1,30 @@
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import type { StockDetail } from "../api/stocks";
+import type { ForecastHorizon, StockDetail } from "../api/stocks";
+
+type HorizonOption = {
+  value: ForecastHorizon;
+  label: string;
+};
 
 type StockDetailScreenProps = {
   detail: StockDetail;
   detailError: string | null;
+  horizonOptions: HorizonOption[];
+  onChangeHorizon: (horizon: ForecastHorizon) => void;
   onChangeStock: () => void;
+  selectedHorizon: ForecastHorizon;
 };
 
 export function StockDetailScreen({
   detail,
   detailError,
+  horizonOptions,
+  onChangeHorizon,
   onChangeStock,
+  selectedHorizon,
 }: StockDetailScreenProps) {
-  const { forecast, horizon, market, prediction, stock } = detail;
+  const { forecast, market, prediction, stock } = detail;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -57,8 +68,26 @@ export function StockDetailScreen({
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardKicker}>Selected horizon</Text>
-          <Text style={styles.cardTitle}>{horizon}</Text>
+          <Text style={styles.cardKicker}>Forecast horizon</Text>
+          <View style={styles.horizonChips}>
+            {horizonOptions.map((option) => {
+              const isSelected = option.value === selectedHorizon;
+
+              return (
+                <Pressable
+                  accessibilityLabel={`Select ${option.label} Forecast Horizon`}
+                  accessibilityRole="button"
+                  key={option.value}
+                  onPress={() => onChangeHorizon(option.value)}
+                  style={[styles.horizonChip, isSelected ? styles.horizonChipSelected : null]}
+                >
+                  <Text style={[styles.horizonChipText, isSelected ? styles.horizonChipTextSelected : null]}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <View style={styles.predictionFacts}>
             <Text style={styles.fact}>{formatConfidence(prediction.confidence)}</Text>
             <Text style={styles.fact}>{formatExpectedChange(prediction.expectedChangePercent)}</Text>
@@ -71,8 +100,7 @@ export function StockDetailScreen({
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Forecast graph unavailable</Text>
           <Text style={styles.cardBody}>
-            Forecast graph rendering comes later. This space will show historical
-            price context and forecasted values for the selected horizon.
+            Forecast graph rendering comes later. Backend graph data is loaded for the {detail.horizonMetadata.label} horizon with {detail.horizonMetadata.expectedForecastPointCount} forecast points.
           </Text>
           <Text style={styles.cardFreshness}>{forecast.freshnessLabel}</Text>
         </View>
@@ -227,6 +255,29 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     fontSize: 24,
     fontWeight: "900",
+  },
+  horizonChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+  },
+  horizonChip: {
+    backgroundColor: "#e2e8f0",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  horizonChipSelected: {
+    backgroundColor: "#2563eb",
+  },
+  horizonChipText: {
+    color: "#334155",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  horizonChipTextSelected: {
+    color: "#ffffff",
   },
   predictionFacts: {
     gap: 8,

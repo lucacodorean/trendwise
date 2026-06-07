@@ -173,3 +173,30 @@ def test_mobile_forecast_horizon_storage_persists_only_canonical_values(
         check=True,
         cwd=tmp_path,
     )
+
+
+def test_mobile_app_loads_and_saves_selected_forecast_horizon() -> None:
+    app_source = (Path(__file__).resolve().parents[2] / "mobile" / "App.tsx").read_text()
+
+    assert "loadForecastHorizon" in app_source
+    assert "saveForecastHorizon" in app_source
+    assert "selectedHorizon" in app_source
+    assert "handleChangeHorizon" in app_source
+    assert "getStockDetail(stock.ticker, horizon)" in app_source
+    assert 'getStockDetail(stock.ticker, "1d")' not in app_source
+
+
+def test_mobile_stock_detail_exposes_forecast_horizon_selector() -> None:
+    detail_source = (
+        Path(__file__).resolve().parents[2]
+        / "mobile"
+        / "src"
+        / "screens"
+        / "StockDetailScreen.tsx"
+    ).read_text()
+
+    assert "selectedHorizon" in detail_source
+    assert "horizonOptions" in detail_source
+    assert "onChangeHorizon" in detail_source
+    assert "Forecast horizon" in detail_source
+    assert "accessibilityLabel={`Select ${option.label} Forecast Horizon`}" in detail_source
