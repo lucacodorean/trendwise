@@ -98,6 +98,104 @@ def test_all_canonical_horizons_generate_valid_line_points(horizon: ForecastHori
         assert point.lower_bound <= point.expected_value <= point.upper_bound
 
 
+def test_intraday_forecast_points_stay_inside_regular_market_session() -> None:
+    source = build_input(ForecastHorizon.thirty_minutes)
+    near_close_input = ForecastInput(
+        stock=source.stock,
+        horizon=source.horizon,
+        market_snapshot=MarketSnapshotInput(
+            latest_price=source.market_snapshot.latest_price,
+            daily_change=source.market_snapshot.daily_change,
+            daily_change_percent=source.market_snapshot.daily_change_percent,
+            observed_at=datetime(2026, 6, 5, 19, 50, tzinfo=timezone.utc),
+            source_id=source.market_snapshot.source_id,
+        ),
+        historical_prices=source.historical_prices,
+        company_news=source.company_news,
+        external_factors=source.external_factors,
+    )
+
+    result = generate_baseline_forecast(near_close_input)
+
+    for point in result.line_points:
+        assert point.timestamp.weekday() < 5
+        assert point.timestamp.time() >= datetime(2026, 6, 5, 13, 30, tzinfo=timezone.utc).time()
+        assert point.timestamp.time() <= datetime(2026, 6, 5, 20, 0, tzinfo=timezone.utc).time()
+
+
+def test_intraday_forecast_points_use_standard_time_market_session_in_winter() -> None:
+    source = build_input(ForecastHorizon.thirty_minutes)
+    winter_near_close_input = ForecastInput(
+        stock=source.stock,
+        horizon=source.horizon,
+        market_snapshot=MarketSnapshotInput(
+            latest_price=source.market_snapshot.latest_price,
+            daily_change=source.market_snapshot.daily_change,
+            daily_change_percent=source.market_snapshot.daily_change_percent,
+            observed_at=datetime(2026, 1, 2, 20, 50, tzinfo=timezone.utc),
+            source_id=source.market_snapshot.source_id,
+        ),
+        historical_prices=source.historical_prices,
+        company_news=source.company_news,
+        external_factors=source.external_factors,
+    )
+
+    result = generate_baseline_forecast(winter_near_close_input)
+
+    assert result.line_points[0].timestamp == datetime(2026, 1, 2, 20, 55, tzinfo=timezone.utc)
+    assert result.line_points[1].timestamp == datetime(2026, 1, 2, 21, 0, tzinfo=timezone.utc)
+    assert result.line_points[2].timestamp == datetime(2026, 1, 5, 14, 35, tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize(
+    "horizon",
+    [
+        ForecastHorizon.five_days,
+        ForecastHorizon.seven_days,
+        ForecastHorizon.one_month,
+        ForecastHorizon.six_months,
+        ForecastHorizon.one_year,
+    ],
+)
+def test_multi_day_forecast_points_use_trading_sessions(horizon: ForecastHorizon) -> None:
+    result = generate_baseline_forecast(build_input(horizon))
+
+    assert all(point.timestamp.weekday() < 5 for point in result.line_points)
+
+
+def test_multi_day_forecast_points_skip_observed_market_holidays() -> None:
+    source = build_input(ForecastHorizon.five_days)
+    before_observed_independence_day = ForecastInput(
+        stock=source.stock,
+        horizon=source.horizon,
+        market_snapshot=MarketSnapshotInput(
+            latest_price=source.market_snapshot.latest_price,
+            daily_change=source.market_snapshot.daily_change,
+            daily_change_percent=source.market_snapshot.daily_change_percent,
+            observed_at=datetime(2026, 7, 2, 14, 30, tzinfo=timezone.utc),
+            source_id=source.market_snapshot.source_id,
+        ),
+        historical_prices=source.historical_prices,
+        company_news=source.company_news,
+        external_factors=source.external_factors,
+    )
+
+    result = generate_baseline_forecast(before_observed_independence_day)
+
+    assert datetime(2026, 7, 3, tzinfo=timezone.utc).date() not in {
+        point.timestamp.date() for point in result.line_points
+    }
+
+
+def test_external_factor_weight_uses_horizon_scale() -> None:
+    result = generate_baseline_forecast(build_input(ForecastHorizon.one_month))
+    external_factor = next(
+        factor for factor in result.key_factors if factor.factor_type == "external_factor_availability"
+    )
+
+    assert external_factor.weight == 0.085
+
+
 def test_candlesticks_are_derived_from_expected_path_and_uncertainty() -> None:
     source = build_input(ForecastHorizon.one_day)
     result = generate_baseline_forecast(source)

@@ -4,6 +4,7 @@
 /* eslint-disable */
 import type { ForecastHorizon } from './ForecastHorizon';
 import type { StockDetailForecast } from './StockDetailForecast';
+import type { StockDetailHorizonMetadata } from './StockDetailHorizonMetadata';
 import type { StockDetailMarket } from './StockDetailMarket';
 import type { StockDetailPrediction } from './StockDetailPrediction';
 import type { StockDetailStock } from './StockDetailStock';
@@ -11,6 +12,7 @@ export type StockDetailResponse = {
     disclaimer: string;
     forecast: StockDetailForecast;
     horizon: ForecastHorizon;
+    horizonMetadata: StockDetailHorizonMetadata;
     market: StockDetailMarket;
     prediction: StockDetailPrediction;
     stock: StockDetailStock;

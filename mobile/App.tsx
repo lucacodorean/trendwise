@@ -2,9 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 
-import { getStockDetail, type PrimaryStock, type StockDetail } from "./src/api/stocks";
+import { getStockDetail, type ForecastHorizon, type PrimaryStock, type StockDetail } from "./src/api/stocks";
 import { StockDetailScreen } from "./src/screens/StockDetailScreen";
 import { StockSearchScreen } from "./src/screens/StockSearchScreen";
+import {
+  DEFAULT_FORECAST_HORIZON,
+  FORECAST_HORIZON_LABELS,
+  FORECAST_HORIZONS,
+  loadForecastHorizon,
+  saveForecastHorizon,
+} from "./src/storage/forecastHorizon";
 import {
   clearPrimaryStock,
   loadPrimaryStock,
@@ -20,21 +27,27 @@ type AppState =
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>({ status: "loading" });
+  const [selectedHorizon, setSelectedHorizon] = useState<ForecastHorizon>(DEFAULT_FORECAST_HORIZON);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const selectionRequestId = useRef(0);
   const detailRequestId = useRef(0);
   const savePrimaryStockQueue = useRef<Promise<void>>(Promise.resolve());
+  const saveForecastHorizonQueue = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     let isActive = true;
 
     async function hydratePrimaryStock() {
       try {
-        const cachedStock = await loadPrimaryStock();
+        const [cachedStock, cachedHorizon] = await Promise.all([
+          loadPrimaryStock(),
+          loadForecastHorizon(),
+        ]);
         if (isActive) {
+          setSelectedHorizon(cachedHorizon);
           if (cachedStock) {
-            loadDetailForStock(cachedStock);
+            loadDetailForStock(cachedStock, cachedHorizon);
           } else {
             setAppState({ status: "search" });
           }
@@ -53,14 +66,18 @@ export default function App() {
     };
   }, []);
 
-  async function loadDetailForStock(stock: PrimaryStock) {
+  async function loadDetailForStock(
+    stock: PrimaryStock,
+    horizon: ForecastHorizon = selectedHorizon,
+    fallbackDetail?: StockDetail,
+  ) {
     const requestId = detailRequestId.current + 1;
     detailRequestId.current = requestId;
 
     setAppState({ status: "detail-loading", stock });
 
     try {
-      const detail = await getStockDetail(stock.ticker, "1d");
+      const detail = await getStockDetail(stock.ticker, horizon);
       if (detailRequestId.current === requestId) {
         setDetailError(null);
         setAppState({ status: "detail", stock, detail });
@@ -68,7 +85,11 @@ export default function App() {
     } catch {
       if (detailRequestId.current === requestId) {
         setDetailError("Could not load Stock details. Try again.");
-        setAppState({ status: "detail-error", stock });
+        if (fallbackDetail) {
+          setAppState({ status: "detail", stock, detail: fallbackDetail });
+        } else {
+          setAppState({ status: "detail-error", stock });
+        }
       }
     }
   }
@@ -89,7 +110,7 @@ export default function App() {
 
       setSelectionError(null);
       setDetailError(null);
-      loadDetailForStock(stock);
+      loadDetailForStock(stock, selectedHorizon);
     } catch {
       if (selectionRequestId.current !== requestId) {
         return;
@@ -97,6 +118,29 @@ export default function App() {
 
       setSelectionError("Could not save your selected Stock. Try again.");
       setAppState({ status: "search" });
+    }
+  }
+
+  async function handleChangeHorizon(horizon: ForecastHorizon) {
+    if (horizon === selectedHorizon) {
+      return;
+    }
+
+    const currentState = appState;
+    setSelectedHorizon(horizon);
+
+    if (currentState.status === "detail") {
+      loadDetailForStock(currentState.stock, horizon, currentState.detail);
+    } else if (currentState.status === "detail-error" || currentState.status === "detail-loading") {
+      loadDetailForStock(currentState.stock, horizon);
+    }
+
+    try {
+      const savePromise = saveForecastHorizonQueue.current.then(() => saveForecastHorizon(horizon));
+      saveForecastHorizonQueue.current = savePromise.catch(() => undefined);
+      await savePromise;
+    } catch {
+      setDetailError("Could not save your selected Forecast Horizon. Try again.");
     }
   }
 
@@ -137,7 +181,7 @@ export default function App() {
           <Pressable
             accessibilityLabel={`Retry loading ${appState.stock.ticker} details`}
             accessibilityRole="button"
-            onPress={() => loadDetailForStock(appState.stock)}
+            onPress={() => loadDetailForStock(appState.stock, selectedHorizon)}
             style={styles.retryButton}
           >
             <Text style={styles.retryButtonText}>Try Again</Text>
@@ -156,7 +200,13 @@ export default function App() {
         <StockDetailScreen
           detail={appState.detail}
           detailError={detailError}
+          horizonOptions={FORECAST_HORIZONS.map((value) => ({
+            value,
+            label: FORECAST_HORIZON_LABELS[value],
+          }))}
+          onChangeHorizon={handleChangeHorizon}
           onChangeStock={handleChangeStock}
+          selectedHorizon={selectedHorizon}
         />
       ) : null}
     </>

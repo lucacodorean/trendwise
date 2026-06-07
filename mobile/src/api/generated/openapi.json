@@ -142,6 +142,60 @@
         "title": "StockDetailForecastLinePoint",
         "type": "object"
       },
+      "StockDetailHorizonMetadata": {
+        "properties": {
+          "calendarBasis": {
+            "enum": [
+              "regular_market_trading_time",
+              "calendar_period"
+            ],
+            "title": "Calendarbasis",
+            "type": "string"
+          },
+          "expectedForecastPointCount": {
+            "title": "Expectedforecastpointcount",
+            "type": "integer"
+          },
+          "externalFactorWeightScale": {
+            "title": "Externalfactorweightscale",
+            "type": "number"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "newsWindowDays": {
+            "title": "Newswindowdays",
+            "type": "integer"
+          },
+          "pricePointBasis": {
+            "$ref": "#/components/schemas/StockDetailPricePointBasis"
+          },
+          "timeBasis": {
+            "enum": [
+              "regular_market",
+              "calendar_period"
+            ],
+            "title": "Timebasis",
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/ForecastHorizon"
+          }
+        },
+        "required": [
+          "value",
+          "label",
+          "timeBasis",
+          "pricePointBasis",
+          "calendarBasis",
+          "newsWindowDays",
+          "externalFactorWeightScale",
+          "expectedForecastPointCount"
+        ],
+        "title": "StockDetailHorizonMetadata",
+        "type": "object"
+      },
       "StockDetailKeyFactor": {
         "properties": {
           "factorType": {
@@ -391,6 +445,13 @@
         "title": "StockDetailPrediction",
         "type": "object"
       },
+      "StockDetailPricePointBasis": {
+        "enum": [
+          "trading_session"
+        ],
+        "title": "StockDetailPricePointBasis",
+        "type": "string"
+      },
       "StockDetailResponse": {
         "properties": {
           "disclaimer": {
@@ -402,6 +463,9 @@
           },
           "horizon": {
             "$ref": "#/components/schemas/ForecastHorizon"
+          },
+          "horizonMetadata": {
+            "$ref": "#/components/schemas/StockDetailHorizonMetadata"
           },
           "market": {
             "$ref": "#/components/schemas/StockDetailMarket"
@@ -416,6 +480,7 @@
         "required": [
           "stock",
           "horizon",
+          "horizonMetadata",
           "market",
           "forecast",
           "prediction",

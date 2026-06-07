@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.forecasts.horizons import get_horizon_metadata
 from app.stocks.repository import (
     StockDetailRepository,
     StockSearchRepository,
@@ -14,6 +15,7 @@ from app.stocks.schemas import (
     StockDetailForecast,
     StockDetailForecastCandlestick,
     StockDetailForecastLinePoint,
+    StockDetailHorizonMetadata,
     StockDetailKeyFactor,
     StockDetailMarket,
     StockDetailPrediction,
@@ -59,6 +61,8 @@ def get_stock_detail(
     detail = repository.get_detail(ticker, horizon.value)
     if detail is None:
         raise HTTPException(status_code=404, detail="Supported Stock not found")
+
+    horizon_metadata = get_horizon_metadata(horizon)
 
     market_row = detail["market"]
     if market_row is None:
@@ -160,6 +164,16 @@ def get_stock_detail(
             exchange=detail["stock"]["exchange"],
         ),
         horizon=horizon,
+        horizon_metadata=StockDetailHorizonMetadata(
+            value=horizon_metadata.value,
+            label=horizon_metadata.label,
+            time_basis=horizon_metadata.time_basis,
+            price_point_basis=horizon_metadata.price_point_basis,
+            calendar_basis=horizon_metadata.calendar_basis,
+            news_window_days=horizon_metadata.news_window_days,
+            external_factor_weight_scale=horizon_metadata.external_factor_weight_scale,
+            expected_forecast_point_count=horizon_metadata.expected_forecast_point_count,
+        ),
         market=market,
         forecast=forecast,
         prediction=prediction,
