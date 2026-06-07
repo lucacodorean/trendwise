@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.forecasts.horizons import CalendarBasis, PricePointBasis, TimeBasis
+from app.forecasts.horizons import CalendarBasis, TimeBasis
 from app.forecasts.models import ForecastHorizon
 
 
@@ -106,13 +107,17 @@ class StockDetailKeyFactor(BaseModel):
     weight: Optional[float]
 
 
+class StockDetailPricePointBasis(str, Enum):
+    trading_session = "trading_session"
+
+
 class StockDetailHorizonMetadata(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     value: ForecastHorizon
     label: str
     time_basis: TimeBasis = Field(serialization_alias="timeBasis")
-    price_point_basis: PricePointBasis = Field(serialization_alias="pricePointBasis")
+    price_point_basis: StockDetailPricePointBasis = Field(serialization_alias="pricePointBasis")
     calendar_basis: CalendarBasis = Field(serialization_alias="calendarBasis")
     news_window_days: int = Field(serialization_alias="newsWindowDays")
     external_factor_weight_scale: float = Field(serialization_alias="externalFactorWeightScale")

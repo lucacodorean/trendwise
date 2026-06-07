@@ -16,6 +16,7 @@ export type { StockDetailHorizonMetadata } from './models/StockDetailHorizonMeta
 export type { StockDetailKeyFactor } from './models/StockDetailKeyFactor';
 export type { StockDetailMarket } from './models/StockDetailMarket';
 export type { StockDetailPrediction } from './models/StockDetailPrediction';
+export type { StockDetailPricePointBasis } from './models/StockDetailPricePointBasis';
 export type { StockDetailResponse } from './models/StockDetailResponse';
 export type { StockDetailStock } from './models/StockDetailStock';
 export type { StockSearchResponse } from './models/StockSearchResponse';

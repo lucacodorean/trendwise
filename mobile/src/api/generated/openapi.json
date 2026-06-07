@@ -169,9 +169,7 @@
             "type": "integer"
           },
           "pricePointBasis": {
-            "const": "trading_session",
-            "title": "Pricepointbasis",
-            "type": "string"
+            "$ref": "#/components/schemas/StockDetailPricePointBasis"
           },
           "timeBasis": {
             "enum": [
@@ -446,6 +444,13 @@
         ],
         "title": "StockDetailPrediction",
         "type": "object"
+      },
+      "StockDetailPricePointBasis": {
+        "enum": [
+          "trading_session"
+        ],
+        "title": "StockDetailPricePointBasis",
+        "type": "string"
       },
       "StockDetailResponse": {
         "properties": {
