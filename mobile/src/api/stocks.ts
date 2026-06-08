@@ -2,6 +2,9 @@ import {
   OpenAPI,
   StocksService,
   type ForecastHorizon,
+  type StockDetailForecastCandlestick,
+  type StockDetailForecastHistoricalPoint,
+  type StockDetailForecastLinePoint,
   type StockDetailResponse,
   type StockSearchResult,
 } from "./generated";
@@ -34,7 +37,12 @@ OpenAPI.BASE = API_BASE_URL;
 
 export type PrimaryStock = StockSearchResult;
 export type StockDetail = StockDetailResponse;
-export type { ForecastHorizon };
+export type {
+  ForecastHorizon,
+  StockDetailForecastCandlestick,
+  StockDetailForecastHistoricalPoint,
+  StockDetailForecastLinePoint,
+};
 
 export async function searchStocks(query: string): Promise<StockSearchResult[]> {
   const response = await StocksService.searchStocks({ q: query });

@@ -14,6 +14,14 @@ import {
   saveForecastHorizon,
 } from "./src/storage/forecastHorizon";
 import {
+  DEFAULT_GRAPH_TYPE,
+  GRAPH_TYPE_LABELS,
+  GRAPH_TYPES,
+  type GraphType,
+  loadGraphType,
+  saveGraphType,
+} from "./src/storage/graphType";
+import {
   clearPrimaryStock,
   loadPrimaryStock,
   savePrimaryStock,
@@ -22,24 +30,28 @@ import {
 export default function App() {
   const [appState, setAppState] = useState<AppState>({ status: "loading" });
   const [selectedHorizon, setSelectedHorizon] = useState<ForecastHorizon>(DEFAULT_FORECAST_HORIZON);
+  const [selectedGraphType, setSelectedGraphType] = useState<GraphType>(DEFAULT_GRAPH_TYPE);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const selectionRequestId = useRef(0);
   const detailRequestId = useRef(0);
   const savePrimaryStockQueue = useRef<Promise<void>>(Promise.resolve());
   const saveForecastHorizonQueue = useRef<Promise<void>>(Promise.resolve());
+  const saveGraphTypeQueue = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     let isActive = true;
 
     async function hydratePrimaryStock() {
       try {
-        const [cachedStock, cachedHorizon] = await Promise.all([
+        const [cachedStock, cachedHorizon, cachedGraphType] = await Promise.all([
           loadPrimaryStock(),
           loadForecastHorizon(),
+          loadGraphType(),
         ]);
         if (isActive) {
           setSelectedHorizon(cachedHorizon);
+          setSelectedGraphType(cachedGraphType);
           if (cachedStock) {
             loadDetailForStock(cachedStock, cachedHorizon);
           } else {
@@ -138,6 +150,22 @@ export default function App() {
     }
   }
 
+  async function handleChangeGraphType(graphType: GraphType) {
+    if (graphType === selectedGraphType) {
+      return;
+    }
+
+    setSelectedGraphType(graphType);
+
+    try {
+      const savePromise = saveGraphTypeQueue.current.then(() => saveGraphType(graphType));
+      saveGraphTypeQueue.current = savePromise.catch(() => undefined);
+      await savePromise;
+    } catch {
+      setDetailError("Could not save your selected Forecast Graph type. Try again.");
+    }
+  }
+
   async function handleChangeStock() {
     try {
       selectionRequestId.current += 1;
@@ -198,8 +226,14 @@ export default function App() {
             value,
             label: FORECAST_HORIZON_LABELS[value],
           }))}
+          graphTypeOptions={GRAPH_TYPES.map((value) => ({
+            value,
+            label: GRAPH_TYPE_LABELS[value],
+          }))}
+          onChangeGraphType={handleChangeGraphType}
           onChangeHorizon={handleChangeHorizon}
           onChangeStock={handleChangeStock}
+          selectedGraphType={selectedGraphType}
           selectedHorizon={selectedHorizon}
         />
       ) : null}

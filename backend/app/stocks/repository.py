@@ -27,8 +27,15 @@ class StockForecastDetailRow(TypedDict):
     id: int
     status: str
     generated_at: datetime
+    historical_points: list["StockForecastHistoricalPointRow"]
     line_points: list["StockForecastLinePointRow"]
     candlesticks: list["StockForecastCandlestickRow"]
+
+
+class StockForecastHistoricalPointRow(TypedDict):
+    sequence: int
+    timestamp: datetime
+    value: float
 
 
 class StockForecastLinePointRow(TypedDict):
@@ -199,9 +206,55 @@ class PostgresStockDetailRepository:
             )
             forecast = cursor.fetchone()
 
+            historical_points: list[StockForecastHistoricalPointRow] = []
             line_points: list[StockForecastLinePointRow] = []
             candlesticks: list[StockForecastCandlestickRow] = []
             if forecast is not None:
+                cursor.execute(
+                    """
+                    SELECT sequence, observed_at, latest_price
+                    FROM (
+                        SELECT
+                            ROW_NUMBER() OVER (ORDER BY observed_at ASC, id ASC) AS sequence,
+                            observed_at,
+                            latest_price
+                        FROM (
+                            SELECT ms.id, ms.observed_at, ms.latest_price
+                            FROM market_snapshots ms
+                            CROSS JOIN (
+                                SELECT MIN(timestamp) AS timestamp
+                                FROM forecast_line_points
+                                WHERE forecast_run_id = %(forecast_run_id)s
+                            ) first_forecast_point
+                            WHERE ms.stock_id = %(stock_id)s
+                              AND (
+                                  ms.observed_at < first_forecast_point.timestamp
+                                  OR (
+                                      first_forecast_point.timestamp IS NULL
+                                      AND ms.observed_at <= %(forecast_generated_at)s
+                                  )
+                              )
+                            ORDER BY ms.observed_at DESC, ms.id DESC
+                            LIMIT 8
+                        ) recent_market_snapshots
+                    ) ordered_market_snapshots
+                    ORDER BY sequence ASC
+                    """,
+                    {
+                        "stock_id": stock_id,
+                        "forecast_run_id": forecast[0],
+                        "forecast_generated_at": forecast[2],
+                    },
+                )
+                historical_points = [
+                    {
+                        "sequence": row[0],
+                        "timestamp": row[1],
+                        "value": numeric_to_float(row[2]),
+                    }
+                    for row in cursor.fetchall()
+                ]
+
                 cursor.execute(
                     """
                     SELECT sequence, timestamp, expected_value, lower_bound, upper_bound
@@ -321,6 +374,7 @@ class PostgresStockDetailRepository:
             else {
                 "status": forecast[1],
                 "generated_at": forecast[2],
+                "historical_points": historical_points,
                 "line_points": line_points,
                 "candlesticks": candlesticks,
             },

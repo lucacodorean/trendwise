@@ -15,6 +15,7 @@ const detail: StockDetail = {
   forecast: {
     freshnessLabel: "fresh",
     generatedAt: null,
+    historicalPoints: [],
     status: "available",
   },
   horizon: "1d",

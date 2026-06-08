@@ -14,6 +14,7 @@ from app.stocks.schemas import (
     ForecastHorizon,
     StockDetailForecast,
     StockDetailForecastCandlestick,
+    StockDetailForecastHistoricalPoint,
     StockDetailForecastLinePoint,
     StockDetailHorizonMetadata,
     StockDetailKeyFactor,
@@ -98,6 +99,14 @@ def get_stock_detail(
             status=forecast_row["status"],
             generated_at=forecast_generated_at,
             freshness_label=f"Forecast checked at {forecast_generated_at}",
+            historical_points=[
+                StockDetailForecastHistoricalPoint(
+                    sequence=point["sequence"],
+                    timestamp=format_utc_datetime(point["timestamp"]),
+                    value=point["value"],
+                )
+                for point in forecast_row["historical_points"]
+            ],
             line_points=[
                 StockDetailForecastLinePoint(
                     sequence=point["sequence"],

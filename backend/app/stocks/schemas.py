@@ -52,11 +52,21 @@ class StockDetailForecast(BaseModel):
     status: str
     generated_at: Optional[str] = Field(serialization_alias="generatedAt")
     freshness_label: str = Field(serialization_alias="freshnessLabel")
+    historical_points: list["StockDetailForecastHistoricalPoint"] = Field(
+        default_factory=list,
+        serialization_alias="historicalPoints",
+    )
     line_points: list["StockDetailForecastLinePoint"] = Field(
         default_factory=list,
         serialization_alias="linePoints",
     )
     candlesticks: list["StockDetailForecastCandlestick"] = Field(default_factory=list)
+
+
+class StockDetailForecastHistoricalPoint(BaseModel):
+    sequence: int
+    timestamp: str
+    value: float
 
 
 class StockDetailForecastLinePoint(BaseModel):
