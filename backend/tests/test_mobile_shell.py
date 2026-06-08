@@ -319,3 +319,5 @@ def test_mobile_forecast_graph_exposes_required_visual_semantics() -> None:
     assert "historicalChartPoints.length + candlesticks.length" in graph_source
     assert "getRangeCopy(selectedGraphType, historicalPoints, linePoints, candlesticks)" in graph_source
     assert "selectedGraphType: GraphType" in graph_source
+    assert "linePoints.length === 1" in graph_source
+    assert "renderSinglePointUncertainty" in graph_source

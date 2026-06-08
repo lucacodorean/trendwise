@@ -141,20 +141,26 @@ function renderLineGraph(
         <Path d={toPath(historicalChartPoints, scale, 0)} fill="none" stroke={HISTORICAL_COLOR} strokeWidth={3} />
       ) : null}
       <Path d={toPath(expectedPoints, scale, historicalChartPoints.length)} fill="none" stroke={FORECAST_COLOR} strokeWidth={3} />
-      <Path
-        d={toPath(upperPoints, scale, historicalChartPoints.length)}
-        fill="none"
-        stroke={UNCERTAINTY_COLOR}
-        strokeDasharray="6 6"
-        strokeWidth={2}
-      />
-      <Path
-        d={toPath(lowerPoints, scale, historicalChartPoints.length)}
-        fill="none"
-        stroke={UNCERTAINTY_COLOR}
-        strokeDasharray="6 6"
-        strokeWidth={2}
-      />
+      {linePoints.length === 1 ? (
+        renderSinglePointUncertainty(linePoints[0], scale, historicalChartPoints.length)
+      ) : (
+        <>
+          <Path
+            d={toPath(upperPoints, scale, historicalChartPoints.length)}
+            fill="none"
+            stroke={UNCERTAINTY_COLOR}
+            strokeDasharray="6 6"
+            strokeWidth={2}
+          />
+          <Path
+            d={toPath(lowerPoints, scale, historicalChartPoints.length)}
+            fill="none"
+            stroke={UNCERTAINTY_COLOR}
+            strokeDasharray="6 6"
+            strokeWidth={2}
+          />
+        </>
+      )}
       {expectedPoints.map((point, index) => (
         <Circle
           cx={scale.x(index + historicalChartPoints.length)}
@@ -165,6 +171,26 @@ function renderLineGraph(
         />
       ))}
     </>
+  );
+}
+
+function renderSinglePointUncertainty(
+  linePoint: StockDetailForecastLinePoint,
+  scale: ReturnType<typeof createScale>,
+  offset: number,
+) {
+  const x = scale.x(offset);
+
+  return (
+    <Line
+      x1={x}
+      x2={x}
+      y1={scale.y(linePoint.upperBound)}
+      y2={scale.y(linePoint.lowerBound)}
+      stroke={UNCERTAINTY_COLOR}
+      strokeDasharray="6 6"
+      strokeWidth={2}
+    />
   );
 }
 

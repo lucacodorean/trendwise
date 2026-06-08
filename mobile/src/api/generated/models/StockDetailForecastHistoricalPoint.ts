@@ -7,4 +7,3 @@ export type StockDetailForecastHistoricalPoint = {
     timestamp: string;
     value: number;
 };
-
