@@ -180,10 +180,32 @@ def test_mobile_app_loads_and_saves_selected_forecast_horizon() -> None:
 
     assert "loadForecastHorizon" in app_source
     assert "saveForecastHorizon" in app_source
+    assert "FORECAST_HORIZONS" in app_source
+    assert "FORECAST_HORIZON_LABELS" in app_source
     assert "selectedHorizon" in app_source
     assert "handleChangeHorizon" in app_source
     assert "getStockDetail(stock.ticker, horizon)" in app_source
+    assert "horizonOptions={FORECAST_HORIZONS.map((value) => ({" in app_source
+    assert "label: FORECAST_HORIZON_LABELS[value]" in app_source
     assert 'getStockDetail(stock.ticker, "1d")' not in app_source
+
+
+def test_mobile_app_offers_all_canonical_forecast_horizons() -> None:
+    storage_source = (
+        Path(__file__).resolve().parents[2]
+        / "mobile"
+        / "src"
+        / "storage"
+        / "forecastHorizon.ts"
+    ).read_text()
+    app_source = (Path(__file__).resolve().parents[2] / "mobile" / "App.tsx").read_text()
+
+    canonical_horizons = ['"30m"', '"1d"', '"5d"', '"7d"', '"1mo"', '"6mo"', '"1y"']
+
+    assert f"export const FORECAST_HORIZONS: ForecastHorizon[] = [{', '.join(canonical_horizons)}]" in storage_source
+    assert "horizonOptions={FORECAST_HORIZONS.map" in app_source
+    assert "horizonOptions={[{ value: selectedHorizon" not in app_source
+    assert "horizonOptions={[{ value: detail.horizon" not in app_source
 
 
 def test_mobile_app_keeps_current_detail_visible_when_horizon_reload_fails() -> None:
