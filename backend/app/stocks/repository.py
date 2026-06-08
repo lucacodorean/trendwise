@@ -219,16 +219,32 @@ class PostgresStockDetailRepository:
                             observed_at,
                             latest_price
                         FROM (
-                            SELECT id, observed_at, latest_price
-                            FROM market_snapshots
-                            WHERE stock_id = %(stock_id)s
-                            ORDER BY observed_at DESC, id DESC
+                            SELECT ms.id, ms.observed_at, ms.latest_price
+                            FROM market_snapshots ms
+                            CROSS JOIN (
+                                SELECT MIN(timestamp) AS timestamp
+                                FROM forecast_line_points
+                                WHERE forecast_run_id = %(forecast_run_id)s
+                            ) first_forecast_point
+                            WHERE ms.stock_id = %(stock_id)s
+                              AND (
+                                  ms.observed_at < first_forecast_point.timestamp
+                                  OR (
+                                      first_forecast_point.timestamp IS NULL
+                                      AND ms.observed_at <= %(forecast_generated_at)s
+                                  )
+                              )
+                            ORDER BY ms.observed_at DESC, ms.id DESC
                             LIMIT 8
                         ) recent_market_snapshots
                     ) ordered_market_snapshots
                     ORDER BY sequence ASC
                     """,
-                    {"stock_id": stock_id},
+                    {
+                        "stock_id": stock_id,
+                        "forecast_run_id": forecast[0],
+                        "forecast_generated_at": forecast[2],
+                    },
                 )
                 historical_points = [
                     {

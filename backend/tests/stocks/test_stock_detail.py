@@ -289,7 +289,11 @@ def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> 
         {"ticker": "AAPL"},
         {"stock_id": 1},
         {"stock_id": 1, "horizon": "1d"},
-        {"stock_id": 1},
+        {
+            "stock_id": 1,
+            "forecast_run_id": 10,
+            "forecast_generated_at": forecast_generated_at,
+        },
         {"forecast_run_id": 10},
         {"forecast_run_id": 10},
         {"forecast_run_id": 10},
@@ -300,6 +304,11 @@ def test_postgres_stock_detail_repository_maps_supported_stock_detail_rows() -> 
     assert "FROM market_snapshots" in sql
     assert "FROM forecast_runs" in sql
     assert "ROW_NUMBER() OVER (ORDER BY observed_at ASC, id ASC)" in sql
+    historical_query = connection.cursor_instance.executed[3][0]
+    assert "MIN(timestamp)" in historical_query
+    assert "forecast_run_id = %(forecast_run_id)s" in historical_query
+    assert "ms.observed_at < first_forecast_point.timestamp" in historical_query
+    assert "ms.observed_at <= %(forecast_generated_at)s" in historical_query
     assert "FROM forecast_line_points" in sql
     assert "FROM forecast_candlesticks" in sql
     assert "FROM prediction_runs" in sql
