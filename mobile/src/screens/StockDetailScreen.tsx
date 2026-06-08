@@ -1,27 +1,39 @@
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { ForecastHorizon, StockDetail } from "../api/stocks";
+import type { GraphType } from "../storage/graphType";
 
 type HorizonOption = {
   value: ForecastHorizon;
   label: string;
 };
 
+type GraphTypeOption = {
+  value: GraphType;
+  label: string;
+};
+
 type StockDetailScreenProps = {
   detail: StockDetail;
   detailError: string | null;
+  graphTypeOptions: GraphTypeOption[];
   horizonOptions: HorizonOption[];
+  onChangeGraphType: (graphType: GraphType) => void;
   onChangeHorizon: (horizon: ForecastHorizon) => void;
   onChangeStock: () => void;
+  selectedGraphType: GraphType;
   selectedHorizon: ForecastHorizon;
 };
 
 export function StockDetailScreen({
   detail,
   detailError,
+  graphTypeOptions,
   horizonOptions,
+  onChangeGraphType,
   onChangeHorizon,
   onChangeStock,
+  selectedGraphType,
   selectedHorizon,
 }: StockDetailScreenProps) {
   const { forecast, market, prediction, stock } = detail;

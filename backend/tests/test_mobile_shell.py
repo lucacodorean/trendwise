@@ -227,3 +227,35 @@ def test_mobile_stock_detail_exposes_forecast_horizon_selector() -> None:
     assert "minWidth: 44" in detail_source
     assert 'alignItems: "center"' in detail_source
     assert 'justifyContent: "center"' in detail_source
+
+
+def test_mobile_declares_graph_type_preference_storage() -> None:
+    storage_path = (
+        Path(__file__).resolve().parents[2]
+        / "mobile"
+        / "src"
+        / "storage"
+        / "graphType.ts"
+    )
+
+    source = storage_path.read_text()
+
+    assert 'const GRAPH_TYPE_KEY = "trendwise.graphType"' in source
+    assert 'export type GraphType = "line" | "candlestick"' in source
+    assert 'export const DEFAULT_GRAPH_TYPE: GraphType = "line"' in source
+    assert 'export const GRAPH_TYPES: GraphType[] = ["line", "candlestick"]' in source
+    assert "value is GraphType" in source
+    assert "loadGraphType" in source
+    assert "saveGraphType" in source
+
+
+def test_mobile_app_loads_and_saves_selected_graph_type() -> None:
+    app_source = (Path(__file__).resolve().parents[2] / "mobile" / "App.tsx").read_text()
+
+    assert "loadGraphType" in app_source
+    assert "saveGraphType" in app_source
+    assert "selectedGraphType" in app_source
+    assert "handleChangeGraphType" in app_source
+    assert "saveGraphTypeQueue" in app_source
+    assert "onChangeGraphType={handleChangeGraphType}" in app_source
+    assert "selectedGraphType={selectedGraphType}" in app_source
