@@ -1,6 +1,7 @@
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { ForecastHorizon, StockDetail } from "../api/stocks";
+import { ForecastGraph } from "../components/ForecastGraph";
 import type { GraphType } from "../storage/graphType";
 
 type HorizonOption = {
@@ -36,7 +37,7 @@ export function StockDetailScreen({
   selectedGraphType,
   selectedHorizon,
 }: StockDetailScreenProps) {
-  const { forecast, market, prediction, stock } = detail;
+  const { market, prediction, stock } = detail;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -110,13 +111,12 @@ export function StockDetailScreen({
 
         <Text style={styles.disclaimer}>{detail.disclaimer}</Text>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Forecast graph unavailable</Text>
-          <Text style={styles.cardBody}>
-            Forecast graph rendering comes later. Backend graph data is loaded for the {detail.horizonMetadata.label} horizon with {detail.horizonMetadata.expectedForecastPointCount} forecast points.
-          </Text>
-          <Text style={styles.cardFreshness}>{forecast.freshnessLabel}</Text>
-        </View>
+        <ForecastGraph
+          detail={detail}
+          graphTypeOptions={graphTypeOptions}
+          onChangeGraphType={onChangeGraphType}
+          selectedGraphType={selectedGraphType}
+        />
       </ScrollView>
     </SafeAreaView>
   );

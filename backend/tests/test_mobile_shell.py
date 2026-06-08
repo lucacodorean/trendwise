@@ -266,3 +266,50 @@ def test_mobile_app_loads_and_saves_selected_graph_type() -> None:
     assert "saveGraphTypeQueue" in app_source
     assert "onChangeGraphType={handleChangeGraphType}" in app_source
     assert "selectedGraphType={selectedGraphType}" in app_source
+
+
+def test_mobile_declares_svg_dependency_for_forecast_graph() -> None:
+    package_json = json.loads(
+        (Path(__file__).resolve().parents[2] / "mobile" / "package.json").read_text()
+    )
+
+    assert "react-native-svg" in package_json["dependencies"]
+
+
+def test_mobile_stock_detail_renders_forecast_graph_component() -> None:
+    detail_source = (
+        Path(__file__).resolve().parents[2]
+        / "mobile"
+        / "src"
+        / "screens"
+        / "StockDetailScreen.tsx"
+    ).read_text()
+
+    assert "ForecastGraph" in detail_source
+    assert "Forecast graph unavailable" not in detail_source
+    assert "selectedGraphType={selectedGraphType}" in detail_source
+    assert "onChangeGraphType={onChangeGraphType}" in detail_source
+
+
+def test_mobile_forecast_graph_exposes_required_visual_semantics() -> None:
+    graph_source = (
+        Path(__file__).resolve().parents[2]
+        / "mobile"
+        / "src"
+        / "components"
+        / "ForecastGraph.tsx"
+    ).read_text()
+
+    assert "react-native-svg" in graph_source
+    assert "Forecast Graph" in graph_source
+    assert "Historical" in graph_source
+    assert "Forecast" in graph_source
+    assert "Uncertainty range" in graph_source
+    assert "strokeDasharray" in graph_source
+    assert "Select Line Forecast Graph" in graph_source
+    assert "Select Candlestick Forecast Graph" in graph_source
+    assert "historicalPoints" in graph_source
+    assert "linePoints" in graph_source
+    assert "candlesticks" in graph_source
+    assert "Forecast Graph data is unavailable" in graph_source
+    assert "Historical context unavailable" in graph_source
