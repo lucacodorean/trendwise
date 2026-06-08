@@ -51,6 +51,13 @@
             ],
             "title": "Generatedat"
           },
+          "historicalPoints": {
+            "items": {
+              "$ref": "#/components/schemas/StockDetailForecastHistoricalPoint"
+            },
+            "title": "Historicalpoints",
+            "type": "array"
+          },
           "linePoints": {
             "items": {
               "$ref": "#/components/schemas/StockDetailForecastLinePoint"
@@ -107,6 +114,29 @@
           "close"
         ],
         "title": "StockDetailForecastCandlestick",
+        "type": "object"
+      },
+      "StockDetailForecastHistoricalPoint": {
+        "properties": {
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "sequence",
+          "timestamp",
+          "value"
+        ],
+        "title": "StockDetailForecastHistoricalPoint",
         "type": "object"
       },
       "StockDetailForecastLinePoint": {

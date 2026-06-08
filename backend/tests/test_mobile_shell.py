@@ -227,3 +227,97 @@ def test_mobile_stock_detail_exposes_forecast_horizon_selector() -> None:
     assert "minWidth: 44" in detail_source
     assert 'alignItems: "center"' in detail_source
     assert 'justifyContent: "center"' in detail_source
+
+
+def test_mobile_declares_graph_type_preference_storage() -> None:
+    storage_path = (
+        Path(__file__).resolve().parents[2]
+        / "mobile"
+        / "src"
+        / "storage"
+        / "graphType.ts"
+    )
+
+    source = storage_path.read_text()
+
+    assert 'const GRAPH_TYPE_KEY = "trendwise.graphType"' in source
+    assert 'export type GraphType = "line" | "candlestick"' in source
+    assert 'export const DEFAULT_GRAPH_TYPE: GraphType = "line"' in source
+    assert 'export const GRAPH_TYPES: GraphType[] = ["line", "candlestick"]' in source
+    assert "value is GraphType" in source
+    assert "loadGraphType" in source
+    assert "saveGraphType" in source
+    load_source = source.split("export async function loadGraphType", 1)[1].split(
+        "export async function saveGraphType",
+        1,
+    )[0]
+    assert load_source.index("try {") < load_source.index("AsyncStorage.getItem")
+    assert "catch" in load_source
+    assert "return DEFAULT_GRAPH_TYPE" in load_source
+
+
+def test_mobile_app_loads_and_saves_selected_graph_type() -> None:
+    app_source = (Path(__file__).resolve().parents[2] / "mobile" / "App.tsx").read_text()
+
+    assert "loadGraphType" in app_source
+    assert "saveGraphType" in app_source
+    assert "selectedGraphType" in app_source
+    assert "handleChangeGraphType" in app_source
+    assert "saveGraphTypeQueue" in app_source
+    assert "onChangeGraphType={handleChangeGraphType}" in app_source
+    assert "selectedGraphType={selectedGraphType}" in app_source
+
+
+def test_mobile_declares_svg_dependency_for_forecast_graph() -> None:
+    package_json = json.loads(
+        (Path(__file__).resolve().parents[2] / "mobile" / "package.json").read_text()
+    )
+
+    assert "react-native-svg" in package_json["dependencies"]
+
+
+def test_mobile_stock_detail_renders_forecast_graph_component() -> None:
+    detail_source = (
+        Path(__file__).resolve().parents[2]
+        / "mobile"
+        / "src"
+        / "screens"
+        / "StockDetailScreen.tsx"
+    ).read_text()
+
+    assert "ForecastGraph" in detail_source
+    assert "Forecast graph unavailable" not in detail_source
+    assert "selectedGraphType={selectedGraphType}" in detail_source
+    assert "onChangeGraphType={onChangeGraphType}" in detail_source
+
+
+def test_mobile_forecast_graph_exposes_required_visual_semantics() -> None:
+    graph_source = (
+        Path(__file__).resolve().parents[2]
+        / "mobile"
+        / "src"
+        / "components"
+        / "ForecastGraph.tsx"
+    ).read_text()
+
+    assert "react-native-svg" in graph_source
+    assert "Forecast Graph" in graph_source
+    assert "Historical" in graph_source
+    assert "Forecast" in graph_source
+    assert "Uncertainty range" in graph_source
+    assert "strokeDasharray" in graph_source
+    assert "Select Line Forecast Graph" in graph_source
+    assert "Select Candlestick Forecast Graph" in graph_source
+    assert "historicalPoints" in graph_source
+    assert "linePoints" in graph_source
+    assert "candlesticks" in graph_source
+    assert "Forecast Graph data is unavailable" in graph_source
+    assert "Historical context unavailable" in graph_source
+    assert "function createScale(points: ChartPoint[], slotCount: number)" in graph_source
+    assert "const maxIndex = Math.max(slotCount - 1, 1)" in graph_source
+    assert "historicalChartPoints.length + linePoints.length" in graph_source
+    assert "historicalChartPoints.length + candlesticks.length" in graph_source
+    assert "getRangeCopy(selectedGraphType, historicalPoints, linePoints, candlesticks)" in graph_source
+    assert "selectedGraphType: GraphType" in graph_source
+    assert "linePoints.length === 1" in graph_source
+    assert "renderSinglePointUncertainty" in graph_source
