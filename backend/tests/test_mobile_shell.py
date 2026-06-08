@@ -313,3 +313,9 @@ def test_mobile_forecast_graph_exposes_required_visual_semantics() -> None:
     assert "candlesticks" in graph_source
     assert "Forecast Graph data is unavailable" in graph_source
     assert "Historical context unavailable" in graph_source
+    assert "function createScale(points: ChartPoint[], slotCount: number)" in graph_source
+    assert "const maxIndex = Math.max(slotCount - 1, 1)" in graph_source
+    assert "historicalChartPoints.length + linePoints.length" in graph_source
+    assert "historicalChartPoints.length + candlesticks.length" in graph_source
+    assert "getRangeCopy(selectedGraphType, historicalPoints, linePoints, candlesticks)" in graph_source
+    assert "selectedGraphType: GraphType" in graph_source

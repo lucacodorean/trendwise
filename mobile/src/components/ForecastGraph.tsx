@@ -96,7 +96,7 @@ export function ForecastGraph({
             <Text style={styles.legendForecast}>Forecast</Text>
             <Text style={styles.legendUncertainty}>Uncertainty range</Text>
           </View>
-          <Text style={styles.rangeCopy}>{getRangeCopy(historicalPoints, linePoints, candlesticks)}</Text>
+          <Text style={styles.rangeCopy}>{getRangeCopy(selectedGraphType, historicalPoints, linePoints, candlesticks)}</Text>
         </View>
       )}
       <Text style={styles.freshness}>{forecast.freshnessLabel}</Text>
@@ -128,7 +128,10 @@ function renderLineGraph(
     timestamp: point.timestamp,
     value: point.upperBound,
   }));
-  const scale = createScale([...historicalChartPoints, ...expectedPoints, ...lowerPoints, ...upperPoints]);
+  const scale = createScale(
+    [...historicalChartPoints, ...expectedPoints, ...lowerPoints, ...upperPoints],
+    historicalChartPoints.length + linePoints.length,
+  );
   const forecastStartX = scale.x(historicalChartPoints.length);
 
   return (
@@ -180,7 +183,10 @@ function renderCandlestickGraph(
     { sequence: candlestick.sequence, timestamp: candlestick.timestamp, value: candlestick.low },
     { sequence: candlestick.sequence, timestamp: candlestick.timestamp, value: candlestick.close },
   ]);
-  const scale = createScale([...historicalChartPoints, ...candleValues]);
+  const scale = createScale(
+    [...historicalChartPoints, ...candleValues],
+    historicalChartPoints.length + candlesticks.length,
+  );
   const forecastStartX = scale.x(historicalChartPoints.length);
   const candleWidth = Math.max(
     5,
@@ -220,7 +226,7 @@ function renderCandlestickGraph(
   );
 }
 
-function createScale(points: ChartPoint[]) {
+function createScale(points: ChartPoint[], slotCount: number) {
   const values = points.map((point) => point.value);
   const minValue = Math.min(...values);
   const maxValue = Math.max(...values);
@@ -229,7 +235,7 @@ function createScale(points: ChartPoint[]) {
   const paddedMin = minValue - domainPadding;
   const paddedMax = maxValue + domainPadding;
   const paddedRange = paddedMax - paddedMin || 1;
-  const maxIndex = Math.max(points.length - 1, 1);
+  const maxIndex = Math.max(slotCount - 1, 1);
 
   return {
     x: (index: number) => CHART_PADDING + (index / maxIndex) * (CHART_WIDTH - CHART_PADDING * 2),
@@ -243,14 +249,18 @@ function toPath(points: ChartPoint[], scale: ReturnType<typeof createScale>, off
 }
 
 function getRangeCopy(
+  selectedGraphType: GraphType,
   historicalPoints: StockDetailForecastHistoricalPoint[],
   linePoints: StockDetailForecastLinePoint[],
   candlesticks: StockDetailForecastCandlestick[],
 ): string {
+  const renderedForecastValues =
+    selectedGraphType === "line"
+      ? linePoints.flatMap((point) => [point.expectedValue, point.lowerBound, point.upperBound])
+      : candlesticks.flatMap((candlestick) => [candlestick.open, candlestick.high, candlestick.low, candlestick.close]);
   const values = [
     ...historicalPoints.map((point) => point.value),
-    ...linePoints.flatMap((point) => [point.expectedValue, point.lowerBound, point.upperBound]),
-    ...candlesticks.flatMap((candlestick) => [candlestick.open, candlestick.high, candlestick.low, candlestick.close]),
+    ...renderedForecastValues,
   ];
   const minValue = Math.min(...values);
   const maxValue = Math.max(...values);
