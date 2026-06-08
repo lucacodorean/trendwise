@@ -16,19 +16,17 @@ export function isGraphType(value: unknown): value is GraphType {
 }
 
 export async function loadGraphType(): Promise<GraphType> {
-  const rawValue = await AsyncStorage.getItem(GRAPH_TYPE_KEY);
-  if (!rawValue) {
-    return DEFAULT_GRAPH_TYPE;
-  }
-
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(rawValue);
+    const rawValue = await AsyncStorage.getItem(GRAPH_TYPE_KEY);
+    if (!rawValue) {
+      return DEFAULT_GRAPH_TYPE;
+    }
+
+    const parsed: unknown = JSON.parse(rawValue);
+    return isGraphType(parsed) ? parsed : DEFAULT_GRAPH_TYPE;
   } catch {
     return DEFAULT_GRAPH_TYPE;
   }
-
-  return isGraphType(parsed) ? parsed : DEFAULT_GRAPH_TYPE;
 }
 
 export async function saveGraphType(graphType: GraphType): Promise<void> {

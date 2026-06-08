@@ -247,6 +247,13 @@ def test_mobile_declares_graph_type_preference_storage() -> None:
     assert "value is GraphType" in source
     assert "loadGraphType" in source
     assert "saveGraphType" in source
+    load_source = source.split("export async function loadGraphType", 1)[1].split(
+        "export async function saveGraphType",
+        1,
+    )[0]
+    assert load_source.index("try {") < load_source.index("AsyncStorage.getItem")
+    assert "catch" in load_source
+    assert "return DEFAULT_GRAPH_TYPE" in load_source
 
 
 def test_mobile_app_loads_and_saves_selected_graph_type() -> None:
